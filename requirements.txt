@@ -1,2 +1,5 @@
 # No external dependencies required as Tkinter comes with Python
 # This file is kept for future dependencies 
+
+tkinter>=8.6
+pillow>=9.0.0 
