@@ -70,7 +70,9 @@ class InsertionSortVisualizer:
     def __init__(self, root):
         self.root = root
         self.root.title("Insertion Sort Visualizer")
-        self.root.geometry("1000x600")
+        # Set window to full screen and disable restore down
+        self.root.state('zoomed')  # For Windows
+        self.root.attributes('-fullscreen', True)  # For cross-platform support
         self.root.minsize(800, 500)
         
         # Default theme is dark
@@ -471,6 +473,11 @@ class InsertionSortVisualizer:
         self.theme_button.pack(side=tk.RIGHT, padx=5)
         self.add_tooltip(self.theme_button, "Switch between light and dark themes (Shortcut: T)")
 
+        # Add close button
+        close_btn = ttk.Button(button_frame, text="Close Window", command=self.close_window)
+        close_btn.pack(side=tk.RIGHT, padx=5)
+        self.add_tooltip(close_btn, "Close the application")
+
         # Status bar
         status_frame = ttk.Frame(main_frame)
         status_frame.pack(fill=tk.X, pady=(10, 0))
@@ -489,12 +496,22 @@ class InsertionSortVisualizer:
 
     def set_speed(self, speed_value, speed_text):
         """Set the animation speed and update the speed label."""
-        self.speed = speed_value
-        self.speed_indicator.config(text=f"Speed: {speed_text}")
-        # Adjust animation duration based on speed
-        self.animation_duration = max(200, min(1000, int(1000 * (speed_value / 500))))
-        # Adjust animation frames based on duration
-        self.animation_frames = max(15, min(60, int(self.animation_duration / self._min_frame_time)))
+        try:
+            self.speed = speed_value
+            self.speed_indicator.config(text=f"Speed: {speed_text}")
+            # Adjust animation duration based on speed
+            self.animation_duration = max(200, min(1000, int(1000 * (speed_value / 500))))
+            # Adjust animation frames based on duration
+            self.animation_frames = max(15, min(60, int(self.animation_duration / self._min_frame_time)))
+            # Update animation speed factor for smooth transitions
+            self.animation_speed_factor = min(1.0, 1000 / self.speed)
+        except Exception as e:
+            print(f"Error setting speed: {str(e)}")
+            # Set default values if error occurs
+            self.speed = 500
+            self.animation_duration = 500
+            self.animation_frames = 30
+            self.animation_speed_factor = 1.0
 
     def generate_random(self):
         if self.sorting:
@@ -756,12 +773,14 @@ class InsertionSortVisualizer:
         self.initial_data = self.data.copy()
         self.sorting = True
         self.pause_button.config(state='normal')
+        self.next_step_button.config(state='normal' if self.step_by_step else 'disabled')
         self.status_label.config(text="Sorting in progress...")
         self.comparisons = 0
         self.swaps = 0
         self.current_iteration = 0
         self.total_iterations = len(self.data)
         self.current_step_completed = True
+        self.step_history = []  # Clear step history
         self.update_statistics()
         self.insertion_sort(1)
 
@@ -775,13 +794,23 @@ class InsertionSortVisualizer:
             self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
     def toggle_step_by_step(self):
+        """Toggle step-by-step mode."""
         self.step_by_step = not self.step_by_step
         if self.step_by_step:
             self.status_label.config(text="Step-by-Step mode enabled - Press 'Next Step' to proceed")
-            if self.sorting and not self.paused:
+            self.paused = True
+            self.pause_button.config(text="Resume", state='disabled')
+            self.next_step_button.config(state='normal')
+            # If we're in the middle of sorting, ensure we're paused
+            if self.sorting:
                 self.paused = True
+                # Clear any pending animations
+                self.animation_queue.clear()
+                self.is_animating = False
         else:
             self.status_label.config(text="Step-by-Step mode disabled")
+            self.pause_button.config(state='normal')
+            self.next_step_button.config(state='disabled')
             if self.sorting:
                 self.paused = False
                 self.process_animation_queue()
@@ -980,10 +1009,10 @@ class InsertionSortVisualizer:
         current = self.data[i]
         j = i - 1
         self.current_iteration = i
-        self.current_step_completed = False  # Reset step completion flag
+        self.current_step_completed = False
         self.update_statistics()
 
-        # Highlight current element and show step description
+        # Step 1: Highlight current element
         step_desc = f"Step {i}: Selecting element {current} at position {i}"
         self.queue_animation(
             self.data.copy(),
@@ -993,12 +1022,17 @@ class InsertionSortVisualizer:
             step_desc
         )
 
-        # Compare and shift elements
-        while j >= 0 and self.data[j] > current:
+        if self.step_by_step:
+            self.paused = True
+            self.status_label.config(text=step_desc)
+            return
+
+        # Step 2: Start comparison loop
+        while j >= 0:
             self.comparisons += 1
             self.update_statistics()
-            
-            # Show comparison with detailed step description
+
+            # Step 2.1: Show comparison
             step_desc = f"Step {i}.{j}: Comparing {current} with {self.data[j]} at position {j}"
             self.queue_animation(
                 self.data.copy(),
@@ -1008,24 +1042,61 @@ class InsertionSortVisualizer:
                 step_desc
             )
 
-            # Create a copy of the data for animation
-            new_data = self.data.copy()
-            new_data[j + 1] = self.data[j]
-            
-            # Animate the movement with detailed step description
-            step_desc = f"Step {i}.{j}: Shifting {self.data[j]} from position {j} to {j+1}"
-            self.queue_animation(
-                self.data.copy(),
-                new_data,
-                {"current": [i], "compare": [j], "sorted": list(range(i))},
-                "move",
-                step_desc
-            )
-            
-            self.data[j + 1] = self.data[j]
-            j -= 1
-            self.swaps += 1
-            self.update_statistics()
+            if self.step_by_step:
+                self.paused = True
+                self.status_label.config(text=step_desc)
+                return
+
+            # Step 2.2: Check if we need to shift
+            if self.data[j] > current:
+                # Step 2.2.1: Show that we need to shift
+                step_desc = f"Step {i}.{j}: {self.data[j]} > {current}, need to shift {self.data[j]} right"
+                self.queue_animation(
+                    self.data.copy(),
+                    self.data.copy(),
+                    {"current": [i], "compare": [j], "sorted": list(range(i))},
+                    "color",
+                    step_desc
+                )
+
+                if self.step_by_step:
+                    self.paused = True
+                    self.status_label.config(text=step_desc)
+                    return
+
+                # Step 2.2.2: Perform the shift
+                new_data = self.data.copy()
+                new_data[j + 1] = self.data[j]
+                step_desc = f"Step {i}.{j}: Shifting {self.data[j]} from position {j} to {j+1}"
+                self.queue_animation(
+                    self.data.copy(),
+                    new_data,
+                    {"current": [i], "compare": [j], "sorted": list(range(i))},
+                    "move",
+                    step_desc
+                )
+
+                if self.step_by_step:
+                    self.paused = True
+                    self.status_label.config(text=step_desc)
+                    return
+
+                # Step 2.2.3: Update the data
+                self.data[j + 1] = self.data[j]
+                j -= 1
+                self.swaps += 1
+                self.update_statistics()
+            else:
+                # Step 2.3: Show that we found the correct position
+                step_desc = f"Step {i}.{j}: {self.data[j]} <= {current}, found insertion point"
+                self.queue_animation(
+                    self.data.copy(),
+                    self.data.copy(),
+                    {"current": [i], "compare": [j], "sorted": list(range(i))},
+                    "color",
+                    step_desc
+                )
+                break
 
             if self.step_by_step:
                 self.paused = True
@@ -1036,7 +1107,7 @@ class InsertionSortVisualizer:
                 self.root.after(100, lambda: self.insertion_sort(i))
                 return
 
-        # Show insertion point with detailed step description
+        # Step 3: Show insertion point
         step_desc = f"Step {i}.{j+1}: Found insertion point at position {j+1} for element {current}"
         self.queue_animation(
             self.data.copy(),
@@ -1046,7 +1117,12 @@ class InsertionSortVisualizer:
             step_desc
         )
 
-        # Insert the current element with detailed step description
+        if self.step_by_step:
+            self.paused = True
+            self.status_label.config(text=step_desc)
+            return
+
+        # Step 4: Insert the current element
         new_data = self.data.copy()
         new_data[j + 1] = current
         step_desc = f"Step {i}.{j+1}: Inserting {current} at position {j+1}"
@@ -1057,11 +1133,18 @@ class InsertionSortVisualizer:
             "move",
             step_desc
         )
+
+        if self.step_by_step:
+            self.paused = True
+            self.status_label.config(text=step_desc)
+            return
+
+        # Step 5: Update the data
         self.data[j + 1] = current
         self.swaps += 1
         self.update_statistics()
 
-        # Show completion of current element with detailed step description
+        # Step 6: Show completion
         step_desc = f"Step {i}: Completed insertion of {current} at position {j+1}"
         self.queue_animation(
             self.data.copy(),
@@ -1109,11 +1192,19 @@ class InsertionSortVisualizer:
         else:
             # If no animations in queue, continue with sorting
             self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
+            
+        # Update button states
+        self.next_step_button.config(state='normal')
+        self.prev_step_button.config(state='normal' if self.step_history else 'disabled')
 
     def previous_step(self):
         """Go back to the previous step in the sorting process."""
         if not self.sorting or not self.step_by_step or not self.step_history:
             return
+        
+        # Clear any pending animations
+        self.animation_queue.clear()
+        self.is_animating = False
         
         # Get the previous step from history
         prev_step = self.step_history.pop()
@@ -1140,6 +1231,24 @@ class InsertionSortVisualizer:
         # Update animation state
         self.current_step_completed = True
         self.is_animating = False
+
+    def close_window(self):
+        """Close the application window."""
+        try:
+            # Clear any pending animations
+            if hasattr(self, 'animation_timer') and self.animation_timer:
+                self.root.after_cancel(self.animation_timer)
+                self.animation_timer = None
+            
+            # Clear animation queue
+            self.animation_queue.clear()
+            self.is_animating = False
+            
+            if messagebox.askokcancel("Quit", "Do you want to quit the application?"):
+                self.root.destroy()
+        except Exception as e:
+            print(f"Error during window close: {str(e)}")
+            self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()
