@@ -70,7 +70,9 @@ class InsertionSortVisualizer:
     def __init__(self, root):
         self.root = root
         self.root.title("Insertion Sort Visualizer")
-        self.root.geometry("1000x600")
+        # Set window to full screen and disable restore down
+        self.root.state('zoomed')  # For Windows
+        self.root.attributes('-fullscreen', True)  # For cross-platform support
         self.root.minsize(800, 500)
         
         # Default theme is dark
@@ -153,6 +155,12 @@ class InsertionSortVisualizer:
             canvas_bg = "#252526"
             text_color = "#D4D4D4"
             border_color = "#3E3E3E"
+            radio_bg = "#2D2D2D"
+            radio_fg = "#FFFFFF"
+            radio_selected = "#007ACC"
+            radio_hover = "#3E3E3E"
+            radio_border = "#404040"
+            radio_container_bg = "#252526"
             
             self.style.configure("TFrame", background=bg_color)
             self.style.configure("TLabel", background=bg_color, foreground=text_color, font=("Segoe UI", 10))
@@ -174,6 +182,35 @@ class InsertionSortVisualizer:
             self.style.configure("Tooltip.TFrame", background="#2D2D2D")
             self.style.configure("Tooltip.TLabel", background="#2D2D2D", foreground="#FFFFFF")
             self.style.configure("CanvasBorder.TFrame", background=border_color)
+            
+            # Enhanced radio button styling for dark theme
+            self.style.configure("Speed.TFrame",
+                               background=radio_container_bg,
+                               relief="flat",
+                               borderwidth=1)
+            
+            self.style.configure("Speed.TRadiobutton",
+                               background=radio_bg,
+                               foreground=radio_fg,
+                               font=("Segoe UI", 10, "bold"),
+                               padding=(15, 8),
+                               indicatorcolor=radio_selected,
+                               indicatorbackground=radio_bg,
+                               indicatorrelief="flat",
+                               borderwidth=1,
+                               relief="flat",
+                               focusthickness=0)
+            
+            self.style.map("Speed.TRadiobutton",
+                          background=[('active', radio_hover),
+                                    ('selected', radio_selected)],
+                          foreground=[('active', radio_fg),
+                                    ('selected', "#FFFFFF")],
+                          indicatorcolor=[('selected', "#FFFFFF")],
+                          indicatorbackground=[('selected', radio_selected)],
+                          relief=[('selected', 'flat')],
+                          borderwidth=[('selected', 0)],
+                          focusthickness=[('selected', 0)])
         else:
             # Light theme colors
             bg_color = "#F5F5F5"
@@ -184,6 +221,12 @@ class InsertionSortVisualizer:
             canvas_bg = "#FFFFFF"
             text_color = "#333333"
             border_color = "#CCCCCC"
+            radio_bg = "#FFFFFF"
+            radio_fg = "#333333"
+            radio_selected = "#0078D4"
+            radio_hover = "#F0F0F0"
+            radio_border = "#E0E0E0"
+            radio_container_bg = "#F8F8F8"
             
             self.style.configure("TFrame", background=bg_color)
             self.style.configure("TLabel", background=bg_color, foreground=text_color, font=("Segoe UI", 10))
@@ -205,6 +248,35 @@ class InsertionSortVisualizer:
             self.style.configure("Tooltip.TFrame", background="#2D2D2D")
             self.style.configure("Tooltip.TLabel", background="#2D2D2D", foreground="#FFFFFF")
             self.style.configure("CanvasBorder.TFrame", background=border_color)
+            
+            # Enhanced radio button styling for light theme
+            self.style.configure("Speed.TFrame",
+                               background=radio_container_bg,
+                               relief="flat",
+                               borderwidth=1)
+            
+            self.style.configure("Speed.TRadiobutton",
+                               background=radio_bg,
+                               foreground=radio_fg,
+                               font=("Segoe UI", 10, "bold"),
+                               padding=(15, 8),
+                               indicatorcolor=radio_selected,
+                               indicatorbackground=radio_bg,
+                               indicatorrelief="flat",
+                               borderwidth=1,
+                               relief="flat",
+                               focusthickness=0)
+            
+            self.style.map("Speed.TRadiobutton",
+                          background=[('active', radio_hover),
+                                    ('selected', radio_selected)],
+                          foreground=[('active', radio_fg),
+                                    ('selected', "#FFFFFF")],
+                          indicatorcolor=[('selected', "#FFFFFF")],
+                          indicatorbackground=[('selected', radio_selected)],
+                          relief=[('selected', 'flat')],
+                          borderwidth=[('selected', 0)],
+                          focusthickness=[('selected', 0)])
 
     def build_ui(self):
         # Main container with padding
@@ -249,16 +321,44 @@ class InsertionSortVisualizer:
         speed_frame = ttk.Frame(control_frame)
         speed_frame.pack(side=tk.RIGHT)
         
-        ttk.Label(speed_frame, text="Speed:", font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        # Create a container for speed controls
+        speed_container = ttk.Frame(speed_frame)
+        speed_container.pack(side=tk.RIGHT)
         
-        # Initialize speed label before slider
-        self.speed_label = ttk.Label(speed_frame, text=f"{self.speed}ms", font=("Segoe UI", 10), width=8, anchor="w")
-        self.speed_label.pack(side=tk.LEFT, padx=(5, 0))
+        # Add speed label with icon
+        speed_label = ttk.Label(speed_container, 
+                              text="⚡ Speed:", 
+                              font=("Segoe UI", 10, "bold"))
+        speed_label.pack(side=tk.LEFT, padx=(0, 15))
         
-        self.speed_slider = ttk.Scale(speed_frame, from_=5, to=2000, orient=tk.HORIZONTAL, command=self.update_speed, length=200)
-        self.speed_slider.set(self.speed)
-        self.speed_slider.pack(side=tk.LEFT)
-        self.add_tooltip(self.speed_slider, "Control the speed of the sorting animation (5ms - 2000ms)")
+        # Create a frame for radio buttons with a subtle border
+        speed_radio_frame = ttk.Frame(speed_container, style="Speed.TFrame")
+        speed_radio_frame.pack(side=tk.LEFT)
+        
+        # Create a variable to hold the selected speed
+        self.speed_var = tk.StringVar(value="normal")
+        
+        # Create radio buttons with custom styling
+        speeds = [
+            ("Slow", "slow", 2000),
+            ("Normal", "normal", 500),
+            ("Fast", "fast", 5)
+        ]
+        
+        for text, value, speed in speeds:
+            radio = ttk.Radiobutton(
+                speed_radio_frame,
+                text=text,
+                value=value,
+                variable=self.speed_var,
+                command=lambda s=speed, t=text: self.set_speed(s, t),
+                style="Speed.TRadiobutton"
+            )
+            radio.pack(side=tk.LEFT, padx=1)
+            self.add_tooltip(radio, f"Set animation speed to {text.lower()}")
+        
+        # Set initial speed
+        self.speed = 500  # Default to normal speed
 
         # Canvas Frame with border
         canvas_frame = ttk.Frame(main_frame)
@@ -369,6 +469,11 @@ class InsertionSortVisualizer:
         self.theme_button.pack(side=tk.RIGHT, padx=5)
         self.add_tooltip(self.theme_button, "Switch between light and dark themes (Shortcut: T)")
 
+        # Add close button
+        close_btn = ttk.Button(button_frame, text="Close Window", command=self.close_window)
+        close_btn.pack(side=tk.RIGHT, padx=5)
+        self.add_tooltip(close_btn, "Close the application")
+
         # Status bar
         status_frame = ttk.Frame(main_frame)
         status_frame.pack(fill=tk.X, pady=(10, 0))
@@ -387,24 +492,28 @@ class InsertionSortVisualizer:
 
     def update_speed(self, val):
         try:
-            self.speed = int(float(val))
-            self.speed_label.config(text=f"{self.speed:4d}ms")
-            # Adjust animation frames based on speed
-            self.animation_frames = max(15, min(40, int(40 * (1000 / self.speed))))
-            # Update animation speed factor for smooth transitions
-            self.animation_speed_factor = min(1.0, 1000 / self.speed)
-            
-            # Update speed indicator
-            if self.speed_indicator:  # Check if speed_indicator exists
-                if self.speed <= 200:
-                    speed_text = "Fast"
-                elif self.speed <= 500:
-                    speed_text = "Normal"
-                else:
-                    speed_text = "Slow"
-                self.speed_indicator.config(text=f"Speed: {speed_text}")
-        except Exception as e:
-            print(f"Error updating speed: {str(e)}")
+            speed_val = float(val)
+            if speed_val <= 0.2:
+                self.speed = 5
+                self.speed_indicator.config(text="Speed: Fastest")
+            elif speed_val <= 0.5:
+                self.speed = 100
+                self.speed_indicator.config(text="Speed: Fast")
+            elif speed_val <= 0.8:
+                self.speed = 500
+                self.speed_indicator.config(text="Speed: Normal")
+            else:
+                self.speed = 2000
+                self.speed_indicator.config(text="Speed: Slow")
+        except Exception:
+            pass
+
+    def set_speed(self, speed_value, speed_text):
+        """Set the animation speed and update the speed label."""
+        self.speed = speed_value
+        self.speed_indicator.config(text=f"Speed: {speed_text}")
+        # Adjust animation frames based on speed
+        self.animation_frames = max(15, min(40, int(40 * (1000 / self.speed))))
 
     def generate_random(self):
         if self.sorting:
@@ -870,12 +979,32 @@ class InsertionSortVisualizer:
     def ease_in_out_quad(self, t):
         return t * t * (3 - 2 * t)
 
+    def validate_sorted_section(self, data):
+        """Validate if the array is properly sorted."""
+        # Check if array is sorted
+        for i in range(1, len(data)):
+            if data[i-1] > data[i]:
+                return False
+        return True
+
     def insertion_sort(self, i):
         """Perform one step of insertion sort."""
         if not self.sorting:
             return
 
         if i >= len(self.data):
+            # Final validation
+            if not self.validate_sorted_section(self.data):
+                if hasattr(self, 'initial_data'):
+                    self.data = self.initial_data.copy()
+                self.status_label.config(text="Error: Sorting validation failed - Restored original data")
+                self.sorting = False
+                self.pause_button.config(state='disabled')
+                self.next_step_button.config(state='disabled')
+                self.draw_bars(self.data)
+                return
+                
+            # Mark all elements as sorted
             self.queue_animation(
                 self.data.copy(), 
                 self.data.copy(),
@@ -896,10 +1025,10 @@ class InsertionSortVisualizer:
         current = self.data[i]
         j = i - 1
         self.current_iteration = i
-        self.current_step_completed = False  # Reset step completion flag
+        self.current_step_completed = False
         self.update_statistics()
 
-        # Highlight current element and show step description
+        # Highlight current element
         step_desc = f"Step {i}: Selecting element {current} at position {i}"
         self.queue_animation(
             self.data.copy(),
@@ -914,7 +1043,7 @@ class InsertionSortVisualizer:
             self.comparisons += 1
             self.update_statistics()
             
-            # Show comparison with detailed step description
+            # Show comparison
             step_desc = f"Step {i}.{j}: Comparing {current} with {self.data[j]} at position {j}"
             self.queue_animation(
                 self.data.copy(),
@@ -931,7 +1060,7 @@ class InsertionSortVisualizer:
             # Update the source position with the current element
             new_data[j] = current
             
-            # Animate the movement with detailed step description
+            # Animate the movement
             step_desc = f"Step {i}.{j}: Moving {self.data[j]} from position {j} to {j+1}"
             self.queue_animation(
                 self.data.copy(),
@@ -957,7 +1086,7 @@ class InsertionSortVisualizer:
                 self.root.after(100, lambda: self.insertion_sort(i))
                 return
 
-        # Show insertion point with detailed step description
+        # Show insertion point
         step_desc = f"Step {i}.{j+1}: Found insertion point at position {j+1} for element {current}"
         self.queue_animation(
             self.data.copy(),
@@ -967,9 +1096,8 @@ class InsertionSortVisualizer:
             step_desc
         )
 
-        # Insert the current element with detailed step description
+        # Insert the current element
         new_data = self.data.copy()
-        # Move the current element to its final position
         new_data[j + 1] = current
         step_desc = f"Step {i}.{j+1}: Moving {current} to position {j+1}"
         self.queue_animation(
@@ -985,7 +1113,7 @@ class InsertionSortVisualizer:
         self.swaps += 1
         self.update_statistics()
 
-        # Show completion of current element with detailed step description
+        # Show completion
         step_desc = f"Step {i}: Completed insertion of {current} at position {j+1}"
         self.queue_animation(
             self.data.copy(),
@@ -998,9 +1126,7 @@ class InsertionSortVisualizer:
         if self.step_by_step:
             self.paused = True
             self.status_label.config(text=step_desc)
-            # Ensure we show the final state before moving to next iteration
             self.draw_bars(self.data.copy(), {"sorted": list(range(i + 1))})
-            # Move to next iteration after completing current element
             self.current_iteration = i + 1
             return
 
@@ -1046,6 +1172,11 @@ class InsertionSortVisualizer:
             else:
                 # Move to next element
                 self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration + 1))
+
+    def close_window(self):
+        """Close the application window."""
+        if messagebox.askokcancel("Quit", "Do you want to quit the application?"):
+            self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()

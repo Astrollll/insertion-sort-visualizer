@@ -7,6 +7,7 @@ import tkinter as tk
 import math
 import time
 from insertion_sort_visualizer import InsertionSortVisualizer
+import tkinter.messagebox as messagebox
 
 class LoadingScreen(tk.Frame):
     """A loading screen with animated progress bar and smooth transitions."""
@@ -23,7 +24,9 @@ class LoadingScreen(tk.Frame):
     def _setup_window(self):
         """Configure the main window properties."""
         self.root.title("Loading...")
-        self.root.geometry("1000x600")
+        # Set window to full screen and disable restore down
+        self.root.state('zoomed')  # For Windows
+        self.root.attributes('-fullscreen', True)  # For cross-platform support
         self.root.minsize(800, 500)
         self.configure(bg="#000000")
         self.pack(fill=tk.BOTH, expand=True)
@@ -79,6 +82,19 @@ class LoadingScreen(tk.Frame):
             command=self.restart_loading
         )
         self.restart_button.pack(pady=(30, 0))
+
+        # Add close button
+        self.close_button = tk.Button(
+            self.center_frame,
+            text="Close Window",
+            font=("Segoe UI", 12, "bold"),
+            bg="#FFFFFF",
+            fg="#000000",
+            activebackground="#333333",
+            activeforeground="#FFFFFF",
+            command=self.close_window
+        )
+        self.close_button.pack(pady=(10, 0))
     
     def _initialize_animation_variables(self):
         """Initialize variables for animations."""
@@ -99,11 +115,15 @@ class LoadingScreen(tk.Frame):
     
     def update_progress_bar(self, progress, fill_color=None, outline_color=None):
         """Update the progress bar with animation."""
+        if not self.winfo_exists():
+            return
+            
         self.progress = progress
         
         # Clear previous progress bar
-        self.progress_canvas.delete("all")
-        self.progress_canvas.configure(bg="#000000")
+        if self.progress_canvas.winfo_exists():
+            self.progress_canvas.delete("all")
+            self.progress_canvas.configure(bg="#000000")
         
         bar_height = 8
         width = self.progress_canvas.winfo_width()
@@ -130,17 +150,25 @@ class LoadingScreen(tk.Frame):
         )
         
         # Update progress label
-        self.progress_label.config(text=f"{int(progress)}%")
+        if self.progress_label.winfo_exists():
+            self.progress_label.config(text=f"{int(progress)}%")
     
     def update_loading_text(self):
         """Update the loading text with animation."""
+        if not self.winfo_exists():
+            return
+            
         if self.current_text_index < len(self.loading_texts):
-            self.loading_label.config(text=self.loading_texts[self.current_text_index])
+            if self.loading_label.winfo_exists():
+                self.loading_label.config(text=self.loading_texts[self.current_text_index])
             self.current_text_index += 1
             self.root.after(2000, self.update_loading_text)
     
     def simulate_loading(self):
         """Simulate loading progress."""
+        if not self.winfo_exists():
+            return
+            
         if self.progress < 100:
             # Simulate variable loading speed
             increment = max(0.1, min(2.0, (100 - self.progress) / 20))
@@ -157,7 +185,11 @@ class LoadingScreen(tk.Frame):
     
     def fade_out(self):
         """Fade out the loading screen and transition to main app."""
-        self.loading_label.config(text="Complete!")
+        if not self.winfo_exists():
+            return
+            
+        if self.loading_label.winfo_exists():
+            self.loading_label.config(text="Complete!")
         self.root.after(1000, self._start_main_app)
     
     def _start_main_app(self):
@@ -185,6 +217,14 @@ class LoadingScreen(tk.Frame):
         
         # Restart animations
         self._start_animations()
+
+    def close_window(self):
+        """Close the loading screen window."""
+        if messagebox.askokcancel("Quit", "Do you want to quit the application?"):
+            # Cancel any ongoing animations
+            if hasattr(self, 'animation_id') and self.animation_id:
+                self.root.after_cancel(self.animation_id)
+            self.root.destroy()
 
 def main():
     root = tk.Tk()
