@@ -70,9 +70,7 @@ class InsertionSortVisualizer:
     def __init__(self, root):
         self.root = root
         self.root.title("Insertion Sort Visualizer")
-        # Set window to full screen and disable restore down
-        self.root.state('zoomed')  # For Windows
-        self.root.attributes('-fullscreen', True)  # For cross-platform support
+        self.root.geometry("1000x600")
         self.root.minsize(800, 500)
         
         # Default theme is dark
@@ -106,36 +104,22 @@ class InsertionSortVisualizer:
         self.current_step = None
         self.animation_queue = []
         self.is_animating = False
-        self.animation_speed_factor = 1.0
-        self.animation_start_time = 0
-        self.animation_duration = 500  # 500ms for each animation
-        self.animation_timer = None  # Store animation timer ID
+        self.animation_speed_factor = 1.0  # For smooth speed transitions
         
         # Performance optimization
-        self._cached_colors = {}
-        self._last_draw_time = 0
+        self._cached_colors = {}  # Cache for interpolated colors
+        self._last_draw_time = 0  # For frame rate limiting
         self._min_frame_time = 16  # ~60 FPS
-        self._target_fps = 60
-        self._frame_time = 1000 / self._target_fps
         
-        # Sorting state
-        self.sorting_state = {
-            'current_i': 0,
-            'current_j': 0,
-            'current_element': None,
-            'is_comparing': False,
-            'is_moving': False
-        }
-        
-        # Color definitions - using more vibrant colors
+        # Color definitions
         self.colors = {
-            'default': "#5E81AC",    # Brighter blue for unsorted
-            'current': "#FFD700",    # Bright yellow for current
-            'compare': "#FF6B6B",    # Bright red for comparison
-            'sorted': "#98FB98",     # Bright green for sorted
-            'insert': "#87CEEB",     # Sky blue for insertion
-            'text': "#FFFFFF",       # White text
-            'text_bg': "#2E3440"     # Dark background for text
+            'default': "#4C566A",    # Gray for unsorted
+            'current': "#EBCB8B",    # Yellow for current
+            'compare': "#BF616A",    # Red for comparison
+            'sorted': "#A3BE8C",     # Green for sorted
+            'insert': "#81A1C1",     # Blue for insertion
+            'text': "#ECEFF4",       # Text color
+            'text_bg': "#2E3440"     # Text background color
         }
 
         self.style = ttk.Style()
@@ -474,6 +458,10 @@ class InsertionSortVisualizer:
         step_nav_frame = ttk.Frame(left_buttons)
         step_nav_frame.pack(side=tk.LEFT, padx=20)
         
+        self.prev_step_button = ttk.Button(step_nav_frame, text="Previous Step", command=self.previous_step, state='disabled')
+        self.prev_step_button.pack(side=tk.LEFT, padx=5)
+        self.add_tooltip(self.prev_step_button, "Go to previous step")
+        
         self.next_step_button = ttk.Button(step_nav_frame, text="Next Step (N)", command=self.next_step)
         self.next_step_button.pack(side=tk.LEFT, padx=5)
         self.add_tooltip(self.next_step_button, "Proceed to next step (Shortcut: N)")
@@ -482,11 +470,6 @@ class InsertionSortVisualizer:
         self.theme_button = ttk.Button(button_frame, text="Switch Theme (T)", command=self.toggle_theme)
         self.theme_button.pack(side=tk.RIGHT, padx=5)
         self.add_tooltip(self.theme_button, "Switch between light and dark themes (Shortcut: T)")
-
-        # Add close button
-        close_btn = ttk.Button(button_frame, text="Close Window", command=self.close_window)
-        close_btn.pack(side=tk.RIGHT, padx=5)
-        self.add_tooltip(close_btn, "Close the application")
 
         # Status bar
         status_frame = ttk.Frame(main_frame)
@@ -504,24 +487,6 @@ class InsertionSortVisualizer:
         shortcuts_text = "Keyboard Shortcuts: Space (Pause/Resume) | S (Start) | R (Reset) | T (Theme) | B (Step-by-Step) | N (Next Step)"
         ttk.Label(shortcuts_frame, text=shortcuts_text, font=("Segoe UI", 8)).pack(side=tk.LEFT)
 
-    def update_speed(self, val):
-        try:
-            speed_val = float(val)
-            if speed_val <= 0.2:
-                self.speed = 5
-                self.speed_indicator.config(text="Speed: Fastest")
-            elif speed_val <= 0.5:
-                self.speed = 100
-                self.speed_indicator.config(text="Speed: Fast")
-            elif speed_val <= 0.8:
-                self.speed = 500
-                self.speed_indicator.config(text="Speed: Normal")
-            else:
-                self.speed = 2000
-                self.speed_indicator.config(text="Speed: Slow")
-        except Exception:
-            pass
-
     def set_speed(self, speed_value, speed_text):
         """Set the animation speed and update the speed label."""
         self.speed = speed_value
@@ -529,7 +494,7 @@ class InsertionSortVisualizer:
         # Adjust animation duration based on speed
         self.animation_duration = max(200, min(1000, int(1000 * (speed_value / 500))))
         # Adjust animation frames based on duration
-        self.animation_frames = max(15, min(60, int(self.animation_duration / self._frame_time)))
+        self.animation_frames = max(15, min(60, int(self.animation_duration / self._min_frame_time)))
 
     def generate_random(self):
         if self.sorting:
@@ -672,6 +637,8 @@ class InsertionSortVisualizer:
             
         except Exception as e:
             print(f"Error drawing bars: {str(e)}")
+            # Don't show error message for drawing errors to avoid spam
+            # Just log it and continue
 
     def add_tooltip(self, widget, text):
         Tooltip(widget, text)
@@ -765,6 +732,7 @@ class InsertionSortVisualizer:
         self.status_label.config(text="")
         self.pause_button.config(text="Pause", state='disabled')
         self.next_step_button.config(state='disabled')
+        self.prev_step_button.config(state='disabled')
         self.comparisons = 0
         self.swaps = 0
         self.current_iteration = 0
@@ -784,11 +752,6 @@ class InsertionSortVisualizer:
             if not self.parse_input():
                 return
 
-        # Clear any existing animations and state
-        self.animation_queue.clear()
-        self.is_animating = False
-        self.current_step_completed = True
-
         # Store the initial data for reference
         self.initial_data = self.data.copy()
         self.sorting = True
@@ -798,18 +761,9 @@ class InsertionSortVisualizer:
         self.swaps = 0
         self.current_iteration = 0
         self.total_iterations = len(self.data)
+        self.current_step_completed = True
         self.update_statistics()
-        
-        # Reset sorting state
-        self.sorting_state = {
-            'current_i': 1,  # Start from second element
-            'current_j': 0,
-            'current_element': None,
-            'is_comparing': False,
-            'is_moving': False
-        }
-        
-        self.continue_sorting()
+        self.insertion_sort(1)
 
     def toggle_pause(self):
         if not self.sorting:
@@ -817,9 +771,8 @@ class InsertionSortVisualizer:
         self.paused = not self.paused
         self.pause_button.config(text="Resume" if self.paused else "Pause")
         if not self.paused and not self.step_by_step:
-            if self.animation_queue:
-                self.process_animation_queue()
-            self.root.after(self.speed, lambda: self.continue_sorting())
+            self.process_animation_queue()
+            self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
     def toggle_step_by_step(self):
         self.step_by_step = not self.step_by_step
@@ -827,14 +780,12 @@ class InsertionSortVisualizer:
             self.status_label.config(text="Step-by-Step mode enabled - Press 'Next Step' to proceed")
             if self.sorting and not self.paused:
                 self.paused = True
-                self.current_step_completed = True
         else:
             self.status_label.config(text="Step-by-Step mode disabled")
             if self.sorting:
                 self.paused = False
-                if self.animation_queue:
-                    self.process_animation_queue()
-                self.root.after(self.speed, lambda: self.continue_sorting())
+                self.process_animation_queue()
+                self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
     def toggle_theme(self):
         try:
@@ -876,266 +827,261 @@ class InsertionSortVisualizer:
         return result
 
     def queue_animation(self, start_data, end_data, colors, animation_type, step_description=None):
-        """Queue an animation to be played."""
+        # Ensure colors are properly copied and maintained
+        colors_copy = {}
+        for key, value in colors.items():
+            if isinstance(value, list):
+                colors_copy[key] = value.copy()
+            else:
+                colors_copy[key] = value
+
+        # Create deep copies of the data
+        start_data_copy = start_data.copy()
+        end_data_copy = end_data.copy()
+
         animation = {
-            'start_data': start_data.copy(),
-            'end_data': end_data.copy(),
-            'colors': colors.copy(),
+            'start_data': start_data_copy,
+            'end_data': end_data_copy,
+            'colors': colors_copy,
             'type': animation_type,
             'step': step_description
         }
         
+        # Store step in history for step-by-step mode
+        if self.step_by_step:
+            self.step_history.append({
+                'data': start_data_copy,
+                'colors': colors_copy.copy(),
+                'description': step_description,
+                'substep': self.current_substep,
+                'iteration': self.current_iteration,
+                'comparisons': self.comparisons,
+                'swaps': self.swaps
+            })
+            self.current_step_number += 1
+            self.total_steps = max(self.total_steps, self.current_step_number)
+            self.current_substep += 1
+            self.total_substeps = max(self.total_substeps, self.current_substep)
+            self.prev_step_button.config(state='normal')
+        
         self.animation_queue.append(animation)
+        self.step_count += 1
+        self.update_statistics()
         
         if not self.is_animating:
-            self._process_next_animation()
+            self.process_animation_queue()
 
-    def _process_next_animation(self):
+    def process_animation_queue(self):
         """Process the next animation in the queue."""
-        if not self.animation_queue or self.is_animating:
+        if not self.animation_queue:
+            self.is_animating = False
+            if self.step_by_step and self.sorting:
+                # If in step-by-step mode and still sorting, continue with next iteration
+                self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
             return
 
+        self.is_animating = True
         animation = self.animation_queue.pop(0)
-        
-        def on_complete():
-            if animation['type'] == 'move':
-                self.data = animation['end_data'].copy()
-            self.is_animating = False
-            if self.animation_queue:
-                self.root.after(50, self._process_next_animation)
-            elif self.step_by_step:
-                self.paused = True
-                self.current_step_completed = True
-
         self.animate_transition(
             animation['start_data'],
             animation['end_data'],
             animation['colors'],
             animation['type'],
-            animation['step'],
-            on_complete
+            animation['step']
         )
 
-    def _validate_data(self, data, operation="unknown"):
-        """Validate data integrity before any operation."""
-        try:
-            if not isinstance(data, list):
-                print(f"Error in {operation}: data is not a list")
-                return False
-                
-            if not data:
-                print(f"Error in {operation}: data is empty")
-                return False
-                
-            if not all(isinstance(x, (int, float)) for x in data):
-                print(f"Error in {operation}: data contains non-numeric values")
-                return False
-                
-            if len(data) != len(self.data):
-                print(f"Error in {operation}: data length mismatch")
-                return False
-                
-            # Validate data values
-            if not all(0 <= x <= 100 for x in data):
-                print(f"Error in {operation}: data values must be between 0 and 100")
-                return False
-                
-            return True
-        except Exception as e:
-            print(f"Error in {operation}: {str(e)}")
-            return False
-
-    def _validate_indices(self, i, j, operation="unknown"):
-        """Validate array indices before any operation."""
-        try:
-            if not isinstance(i, int) or not isinstance(j, int):
-                print(f"Error in {operation}: invalid index types")
-                return False
-                
-            # Allow j to be -1 for insertion at the beginning
-            if i < 0 or i >= len(self.data):
-                print(f"Error in {operation}: index i out of bounds")
-                return False
-                
-            if j < -1 or j >= len(self.data):
-                print(f"Error in {operation}: index j out of bounds")
-                return False
-                
-            # Validate index relationship
-            if j >= i:
-                print(f"Error in {operation}: invalid index relationship (j >= i)")
-                return False
-                
-            return True
-        except Exception as e:
-            print(f"Error in {operation}: {str(e)}")
-            return False
-
-    def _validate_state(self, operation="unknown"):
-        """Validate the current state of the visualizer."""
-        try:
-            if not hasattr(self, 'data') or not self.data:
-                print(f"Error in {operation}: no data available")
-                return False
-                
-            # Only check sorting state for operations that require active sorting
-            if operation in ["_compare_and_shift", "_insert_element", "_process_current_element", "_complete_sorting"]:
-                if not hasattr(self, 'sorting') or not self.sorting:
-                    print(f"Error in {operation}: sorting not active")
-                    return False
-                    
-                if not hasattr(self, 'sorting_state'):
-                    print(f"Error in {operation}: sorting state not initialized")
-                    return False
-                    
-                # Validate sorting state
-                required_keys = ['current_i', 'current_j', 'current_element', 'is_comparing', 'is_moving']
-                if not all(key in self.sorting_state for key in required_keys):
-                    print(f"Error in {operation}: invalid sorting state")
-                    return False
-                
-            return True
-        except Exception as e:
-            print(f"Error in {operation}: {str(e)}")
-            return False
-
-    def animate_transition(self, start_data, end_data, colors, animation_type, step_description=None, on_complete=None):
-        """Start a new animation transition with validation."""
-        if not self._validate_data(start_data, "animate_transition start") or not self._validate_data(end_data, "animate_transition end"):
-            print("Animation cancelled due to data validation failure")
-            return
-
-        if self.is_animating:
-            self.animation_queue.append({
-                'start_data': start_data.copy(),
-                'end_data': end_data.copy(),
-                'colors': colors.copy(),
-                'type': animation_type,
-                'step': step_description,
-                'on_complete': on_complete
-            })
-            return
-
-        self.animation_data = (start_data.copy(), end_data.copy())
-        self.animation_colors = colors.copy()
+    def animate_transition(self, start_data, end_data, colors, animation_type, step_description=None):
+        self.animation_data = (start_data, end_data)
+        self.animation_colors = colors
         self.animation_type = animation_type
         self.current_frame = 0
         self.current_animation = step_description
-        self.on_complete = on_complete
-        self.animation_start_time = time.time() * 1000
-        self.is_animating = True
-
         if step_description:
             self.current_step = step_description
-
-        self.draw_bars(start_data, colors)
-        self.root.update_idletasks()
         self.animate_frame()
 
     def animate_frame(self):
         """Animate a single frame of the current transition."""
-        if not self.is_animating:
+        if self.paused and not self.step_by_step:
             return
-
-        current_time = time.time() * 1000
-        elapsed = current_time - self.animation_start_time
-
-        if elapsed >= self.animation_duration:
-            # Ensure we show the final state
+            
+        if self.current_frame >= self.animation_frames:
             self.draw_bars(self.animation_data[1], self.animation_colors)
             self.current_step_completed = True
-            self.is_animating = False
-
-            # Call on_complete callback if provided
-            if self.on_complete:
-                self.on_complete()
-
-            # Process next animation in queue
-            if self.animation_queue:
-                self.root.after(50, self._process_next_animation)
-            elif self.step_by_step:
+            
+            if self.step_by_step:
                 self.paused = True
-                self.current_step_completed = True
+                # Ensure we show the final state before moving to next step
+                self.draw_bars(self.animation_data[1], self.animation_colors)
+                if not self.animation_queue:  # If no more animations in queue
+                    self.root.after(50, lambda: self.insertion_sort(self.current_iteration))
+            elif not self.paused:
+                self.root.after(50, self.process_animation_queue)
             return
 
-        # Calculate progress based on elapsed time
-        progress = min(1.0, elapsed / self.animation_duration)
-
         # Frame rate limiting
-        if current_time - self._last_draw_time < self._frame_time:
-            self.root.after(int(self._frame_time - (current_time - self._last_draw_time)), self.animate_frame)
+        current_time = time.time() * 1000
+        elapsed = current_time - self._last_draw_time
+        if elapsed < self._min_frame_time:
+            if not self.paused or self.step_by_step:
+                self.root.after(int(self._min_frame_time - elapsed), self.animate_frame)
             return
 
         start_data, end_data = self.animation_data
+        factor = self.current_frame / self.animation_frames
 
         # Interpolate between start and end positions
         current_data = []
         for i in range(len(start_data)):
             if self.animation_type == "move":
                 # Use easing function for smoother movement
-                eased_progress = self.ease_in_out_quad(progress)
-                current_data.append(start_data[i] + (end_data[i] - start_data[i]) * eased_progress)
+                eased_factor = self.ease_in_out_quad(factor)
+                current_data.append(start_data[i] + (end_data[i] - start_data[i]) * eased_factor)
             else:
-                current_data.append(start_data[i])
+                current_data.append(start_data[i] + (end_data[i] - start_data[i]) * factor)
 
         # Use the same color positions throughout the animation
         self.draw_bars(current_data, self.animation_colors)
+        self.current_frame += 1
         self._last_draw_time = current_time
-
-        # Schedule next frame
-        self.root.after(int(self._frame_time), self.animate_frame)
+        
+        # Calculate next frame delay based on speed
+        next_frame_delay = int(self._min_frame_time * self.animation_speed_factor)
+        if not self.paused or self.step_by_step:
+            self.root.after(next_frame_delay, self.animate_frame)
 
     def ease_in_out_quad(self, t):
-        """Smooth easing function for animations."""
-        t = max(0, min(1, t))  # Clamp t between 0 and 1
-        if t < 0.5:
-            return 2 * t * t
-        else:
-            return -1 + (4 - 2 * t) * t
+        return t * t * (3 - 2 * t)
 
-    def validate_sorted_section(self, data):
-        """Validate if the array is properly sorted."""
-        try:
-            if not isinstance(data, list):
-                print(f"Error: data is not a list")
-                return False
-                
-            if not data:
-                print(f"Error: data is empty")
-                return False
-                
-            if not all(isinstance(x, (int, float)) for x in data):
-                print(f"Error: data contains non-numeric values")
-                return False
-                
-            # Check if array is sorted
-            for i in range(1, len(data)):
-                if data[i-1] > data[i]:
-                    print(f"Error: Array not sorted at index {i} ({data[i-1]} > {data[i]})")
-                    return False
-                    
-            # For partial sorted sections, only validate that the elements exist in the original array
-            if len(data) < len(self.initial_data):
-                # Check if all elements in the sorted section exist in the original array
-                original_elements = set(self.initial_data)
-                current_elements = set(data)
-                if not current_elements.issubset(original_elements):
-                    print("Error: Sorted section contains elements not in original array")
-                    print(f"Original elements: {original_elements}")
-                    print(f"Current elements: {current_elements}")
-                    return False
-            else:
-                # For complete array, validate that all elements are preserved
-                if sorted(data) != sorted(self.initial_data):
-                    print("Error: Array elements changed during sorting")
-                    print(f"Original: {self.initial_data}")
-                    print(f"Current: {data}")
-                    return False
-                
-            return True
-        except Exception as e:
-            print(f"Error in validate_sorted_section: {str(e)}")
-            return False
+    def insertion_sort(self, i):
+        """Perform one step of insertion sort."""
+        if not self.sorting:
+            return
+
+        if i >= len(self.data):
+            self.queue_animation(
+                self.data.copy(), 
+                self.data.copy(),
+                {"sorted": list(range(len(self.data)))},
+                "color",
+                "Sorting Complete"
+            )
+            self.status_label.config(text=f"Sorted: {self.data}")
+            self.sorting = False
+            self.pause_button.config(state='disabled')
+            self.next_step_button.config(state='disabled')
+            self.prev_step_button.config(state='normal')
+            return
+
+        if self.paused and not self.step_by_step:
+            self.root.after(100, lambda: self.insertion_sort(i))
+            return
+
+        current = self.data[i]
+        j = i - 1
+        self.current_iteration = i
+        self.current_step_completed = False  # Reset step completion flag
+        self.update_statistics()
+
+        # Highlight current element and show step description
+        step_desc = f"Step {i}: Selecting element {current} at position {i}"
+        self.queue_animation(
+            self.data.copy(),
+            self.data.copy(),
+            {"current": [i], "sorted": list(range(i))},
+            "color",
+            step_desc
+        )
+
+        # Compare and shift elements
+        while j >= 0 and self.data[j] > current:
+            self.comparisons += 1
+            self.update_statistics()
+            
+            # Show comparison with detailed step description
+            step_desc = f"Step {i}.{j}: Comparing {current} with {self.data[j]} at position {j}"
+            self.queue_animation(
+                self.data.copy(),
+                self.data.copy(),
+                {"current": [i], "compare": [j], "sorted": list(range(i))},
+                "color",
+                step_desc
+            )
+
+            # Create a copy of the data for animation
+            new_data = self.data.copy()
+            new_data[j + 1] = self.data[j]
+            
+            # Animate the movement with detailed step description
+            step_desc = f"Step {i}.{j}: Shifting {self.data[j]} from position {j} to {j+1}"
+            self.queue_animation(
+                self.data.copy(),
+                new_data,
+                {"current": [i], "compare": [j], "sorted": list(range(i))},
+                "move",
+                step_desc
+            )
+            
+            self.data[j + 1] = self.data[j]
+            j -= 1
+            self.swaps += 1
+            self.update_statistics()
+
+            if self.step_by_step:
+                self.paused = True
+                self.status_label.config(text=step_desc)
+                return
+
+            if self.paused and not self.step_by_step:
+                self.root.after(100, lambda: self.insertion_sort(i))
+                return
+
+        # Show insertion point with detailed step description
+        step_desc = f"Step {i}.{j+1}: Found insertion point at position {j+1} for element {current}"
+        self.queue_animation(
+            self.data.copy(),
+            self.data.copy(),
+            {"current": [i], "insert": [j + 1], "sorted": list(range(i))},
+            "color",
+            step_desc
+        )
+
+        # Insert the current element with detailed step description
+        new_data = self.data.copy()
+        new_data[j + 1] = current
+        step_desc = f"Step {i}.{j+1}: Inserting {current} at position {j+1}"
+        self.queue_animation(
+            self.data.copy(),
+            new_data,
+            {"current": [i], "insert": [j + 1], "sorted": list(range(i))},
+            "move",
+            step_desc
+        )
+        self.data[j + 1] = current
+        self.swaps += 1
+        self.update_statistics()
+
+        # Show completion of current element with detailed step description
+        step_desc = f"Step {i}: Completed insertion of {current} at position {j+1}"
+        self.queue_animation(
+            self.data.copy(),
+            self.data.copy(),
+            {"sorted": list(range(i + 1))},
+            "color",
+            step_desc
+        )
+
+        if self.step_by_step:
+            self.paused = True
+            self.status_label.config(text=step_desc)
+            # Ensure we show the final state before moving to next iteration
+            self.draw_bars(self.data.copy(), {"sorted": list(range(i + 1))})
+            # Move to next iteration after completing current element
+            self.current_iteration = i + 1
+            return
+
+        # Continue with next element
+        self.root.after(self.speed, lambda: self.insertion_sort(i + 1))
 
     def on_canvas_resize(self, event):
         try:
@@ -1154,9 +1100,6 @@ class InsertionSortVisualizer:
         if not self.sorting or not self.step_by_step:
             return
             
-        if not self.current_step_completed:
-            return
-            
         self.paused = False
         self.current_step_completed = False
         
@@ -1164,384 +1107,39 @@ class InsertionSortVisualizer:
         if self.animation_queue:
             self.process_animation_queue()
         else:
-            # Continue with sorting
-            self.continue_sorting()
+            # If no animations in queue, continue with sorting
+            self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
-    def close_window(self):
-        """Close the application window."""
-        if messagebox.askokcancel("Quit", "Do you want to quit the application?"):
-            self.root.destroy()
-
-    def continue_sorting(self):
-        """Continue the sorting process from the current state."""
-        if not self.sorting:
+    def previous_step(self):
+        """Go back to the previous step in the sorting process."""
+        if not self.sorting or not self.step_by_step or not self.step_history:
             return
-            
-        if self.paused and not self.step_by_step:
-            return
-            
-        if not self.current_step_completed:
-            return
-            
-        i = self.sorting_state['current_i']
-        if i >= len(self.data):
-            self._complete_sorting()
-            return
-            
-        self._process_current_element(i)
-
-    def _complete_sorting(self):
-        """Complete the sorting process with validation."""
-        if not self._validate_state("_complete_sorting"):
-            return
-
-        # Clear any pending animations
-        self.animation_queue.clear()
-        self.is_animating = False
-
-        # Make a copy of the data for validation
-        current_data = self.data.copy()
         
-        if not self.validate_sorted_section(current_data):
-            if hasattr(self, 'initial_data'):
-                self.data = self.initial_data.copy()
-                self.draw_bars(self.data)
-            self.status_label.config(text="Error: Sorting validation failed - Restored original data")
-            self.sorting = False
-            self.paused = False
-            self.step_by_step = False
-            self.current_step_completed = True
-            return
-
-        # Queue final animation
-        self.queue_animation(
-            self.data.copy(), 
-            self.data.copy(),
-            {"sorted": list(range(len(self.data)))},
-            "color",
-            "Sorting Complete"
-        )
-        self.status_label.config(text=f"Sorted: {self.data}")
-        self.sorting = False
-        self.paused = False
-        self.step_by_step = False
+        # Get the previous step from history
+        prev_step = self.step_history.pop()
+        self.current_step_number -= 1
+        
+        # Restore the data and colors
+        self.data = prev_step['data'].copy()
+        self.animation_colors = prev_step['colors'].copy()
+        self.current_step = prev_step['description']
+        self.current_substep = prev_step['substep']
+        self.current_iteration = prev_step['iteration']
+        self.comparisons = prev_step['comparisons']
+        self.swaps = prev_step['swaps']
+        
+        # Update the display
+        self.draw_bars(self.data, self.animation_colors)
+        self.status_label.config(text=prev_step['description'])
+        self.update_statistics()
+        
+        # Enable/disable navigation buttons
+        self.prev_step_button.config(state='normal' if self.step_history else 'disabled')
+        self.next_step_button.config(state='normal')
+        
+        # Update animation state
         self.current_step_completed = True
-
-    def _process_current_element(self, i):
-        """Process the current element with validation."""
-        try:
-            if not self._validate_state("_process_current_element"):
-                self._handle_sorting_error("Invalid state during element processing")
-                return
-
-            if not self._validate_indices(i, i-1, "_process_current_element"):
-                self._handle_sorting_error("Invalid indices during element processing")
-                return
-
-            current = self.data[i]
-            
-            # Validate current element
-            if not isinstance(current, (int, float)) or not (0 <= current <= 100):
-                self._handle_sorting_error("Invalid current element value")
-                return
-                
-            j = i - 1
-            
-            # Optimize: If current element is already in correct position, skip processing
-            if j >= 0 and self.data[j] <= current:
-                self.current_iteration = i + 1
-                self.current_step_completed = True
-                self.update_statistics()
-                
-                step_desc = f"Step {i}: Element {current} already in correct position"
-                self.queue_animation(
-                    self.data.copy(),
-                    self.data.copy(),
-                    {"sorted": list(range(i + 1))},
-                    "color",
-                    step_desc
-                )
-                
-                if self.step_by_step:
-                    self.paused = True
-                    self.status_label.config(text=step_desc)
-                    return
-                    
-                if i + 1 < len(self.data):
-                    self.root.after(self.speed, lambda: self._process_current_element(i + 1))
-                else:
-                    self._complete_sorting()
-                return
-            
-            self.sorting_state.update({
-                'current_i': i,
-                'current_j': j,
-                'current_element': current,
-                'is_comparing': True,
-                'is_moving': False
-            })
-            
-            self.current_iteration = i
-            self.current_step_completed = False
-            self.update_statistics()
-
-            step_desc = f"Step {i}: Selecting element {current} at position {i}"
-            self.queue_animation(
-                self.data.copy(),
-                self.data.copy(),
-                {"current": [i], "sorted": list(range(i))},
-                "color",
-                step_desc
-            )
-
-            self._insert_element(i, j, current)
-        except Exception as e:
-            self._handle_sorting_error(f"Error processing element: {str(e)}")
-
-    def _insert_element(self, i, j, current):
-        """Insert element with strict validation."""
-        try:
-            if not self._validate_state("_insert_element"):
-                self._handle_sorting_error("Invalid state during insertion")
-                return
-
-            if not self._validate_indices(i, j, "_insert_element"):
-                self._handle_sorting_error("Invalid indices during insertion")
-                return
-                
-            if not isinstance(current, (int, float)) or not (0 <= current <= 100):
-                self._handle_sorting_error("Invalid current element during insertion")
-                return
-
-            def insert_at_position(pos):
-                try:
-                    # Create a copy of the data for animation
-                    new_data = self.data.copy()
-                    new_data[pos] = current
-
-                    if not self._validate_data(new_data, "_insert_element new_data"):
-                        self._handle_sorting_error("Invalid data during insertion")
-                        return
-
-                    def update_after_insert():
-                        try:
-                            if not self._validate_state("update_after_insert"):
-                                self._handle_sorting_error("Invalid state after insertion")
-                                return
-
-                            # Update the data
-                            self.data[pos] = current
-                            self.swaps += 1
-                            self.update_statistics()
-
-                            # Validate the current state
-                            if not self._validate_data(self.data, "update_after_insert"):
-                                self._handle_sorting_error("Invalid data state after insertion")
-                                return
-
-                            # Validate the sorted section up to the current position
-                            sorted_section = self.data[:i + 1]
-                            if not self.validate_sorted_section(sorted_section):
-                                self._handle_sorting_error("Invalid sorted section after insertion")
-                                return
-
-                            # Optimize: Check if next element is already in correct position
-                            next_i = i + 1
-                            if next_i < len(self.data) and self.data[next_i] >= current:
-                                step_desc = f"Step {i}: Completed insertion of {current} at position {pos} (Next element already in position)"
-                            else:
-                                step_desc = f"Step {i}: Completed insertion of {current} at position {pos}"
-
-                            self.queue_animation(
-                                self.data.copy(),
-                                self.data.copy(),
-                                {"sorted": list(range(i + 1))},
-                                "color",
-                                step_desc
-                            )
-
-                            if self.step_by_step:
-                                self.paused = True
-                                self.status_label.config(text=step_desc)
-                                self.draw_bars(self.data.copy(), {"sorted": list(range(i + 1))})
-                                self.current_iteration = i + 1
-                                self.current_step_completed = True
-                                return
-
-                            i_next = i + 1
-                            if i_next < len(self.data):
-                                self.root.after(self.speed, lambda: self._process_current_element(i_next))
-                            else:
-                                self._complete_sorting()
-                        except Exception as e:
-                            self._handle_sorting_error(f"Error after insertion: {str(e)}")
-
-                    # Queue animations in sequence with optimized timing
-                    step_desc = f"Step {i}.{pos}: Selecting element {current} at position {i}"
-                    self.queue_animation(
-                        self.data.copy(),
-                        self.data.copy(),
-                        {"current": [i], "sorted": list(range(i))},
-                        "color",
-                        step_desc
-                    )
-
-                    step_desc = f"Step {i}.{pos}: Found insertion point at position {pos} for element {current}"
-                    self.queue_animation(
-                        self.data.copy(),
-                        self.data.copy(),
-                        {"current": [i], "insert": [pos], "sorted": list(range(i))},
-                        "color",
-                        step_desc
-                    )
-
-                    step_desc = f"Step {i}.{pos}: Moving {current} to position {pos}"
-                    self.queue_animation(
-                        self.data.copy(),
-                        new_data,
-                        {"current": [i], "insert": [pos], "sorted": list(range(i))},
-                        "move",
-                        step_desc
-                    )
-
-                    # Wait for animation to complete before updating data
-                    self.root.after(self.animation_duration, update_after_insert)
-                except Exception as e:
-                    self._handle_sorting_error(f"Error during position insertion: {str(e)}")
-
-            def shift_and_compare(pos):
-                try:
-                    if pos < 0:
-                        # Insert at beginning
-                        insert_at_position(0)
-                        return
-
-                    # Compare current element with the element at position pos
-                    self.comparisons += 1
-                    self.update_statistics()
-
-                    # Optimize: If we find a smaller element, we can stop shifting
-                    if self.data[pos] <= current:
-                        insert_at_position(pos + 1)
-                        return
-
-                    # Create a copy of the data for animation
-                    new_data = self.data.copy()
-                    new_data[pos + 1] = self.data[pos]
-
-                    if not self._validate_data(new_data, "shift_and_compare new_data"):
-                        self._handle_sorting_error("Invalid data during shift")
-                        return
-
-                    def update_after_shift():
-                        try:
-                            if not self._validate_state("update_after_shift"):
-                                self._handle_sorting_error("Invalid state after shift")
-                                return
-
-                            # Update the data
-                            self.data[pos + 1] = self.data[pos]
-                            self.swaps += 1
-                            self.update_statistics()
-
-                            # Validate the current state
-                            if not self._validate_data(self.data, "update_after_shift"):
-                                self._handle_sorting_error("Invalid data state after shift")
-                                return
-
-                            if self.step_by_step:
-                                self.paused = True
-                                self.status_label.config(text=step_desc)
-                                self.current_step_completed = True
-                                return
-
-                            if self.paused and not self.step_by_step:
-                                return
-
-                            # Continue shifting
-                            shift_and_compare(pos - 1)
-                        except Exception as e:
-                            self._handle_sorting_error(f"Error after shift: {str(e)}")
-
-                    # Queue animations in sequence with optimized timing
-                    step_desc = f"Step {i}.{pos}: Selecting element {current} at position {i}"
-                    self.queue_animation(
-                        self.data.copy(),
-                        self.data.copy(),
-                        {"current": [i], "sorted": list(range(i))},
-                        "color",
-                        step_desc
-                    )
-
-                    step_desc = f"Step {i}.{pos}: Comparing {current} with {self.data[pos]} at position {pos}"
-                    self.queue_animation(
-                        self.data.copy(),
-                        self.data.copy(),
-                        {"current": [i], "compare": [pos], "sorted": list(range(i))},
-                        "color",
-                        step_desc
-                    )
-
-                    step_desc = f"Step {i}.{pos}: Moving {self.data[pos]} from position {pos} to {pos+1}"
-                    self.queue_animation(
-                        self.data.copy(),
-                        new_data,
-                        {"current": [i], "compare": [pos], "sorted": list(range(i))},
-                        "move",
-                        step_desc
-                    )
-
-                    # Wait for animation to complete before updating data
-                    self.root.after(self.animation_duration, update_after_shift)
-                except Exception as e:
-                    self._handle_sorting_error(f"Error during shift and compare: {str(e)}")
-
-            # Start the insertion process
-            shift_and_compare(j)
-        except Exception as e:
-            self._handle_sorting_error(f"Error during insertion: {str(e)}")
-
-    def _handle_sorting_error(self, error_message):
-        """Handle sorting errors gracefully."""
-        try:
-            print(f"Sorting error: {error_message}")
-            self.status_label.config(text=f"Error: {error_message}")
-            
-            # Restore initial data if available
-            if hasattr(self, 'initial_data') and self.initial_data is not None:
-                self.data = self.initial_data.copy()
-                self.draw_bars(self.data)
-            
-            # Reset sorting state
-            self.sorting = False
-            self.paused = False
-            self.step_by_step = False
-            self.current_step_completed = True
-            self.animation_queue.clear()
-            self.is_animating = False
-            
-            # Reset sorting state dictionary
-            self.sorting_state = {
-                'current_i': 0,
-                'current_j': 0,
-                'current_element': None,
-                'is_comparing': False,
-                'is_moving': False
-            }
-            
-            # Update UI
-            self.pause_button.config(state='disabled')
-            self.next_step_button.config(state='disabled')
-            self.update_statistics()
-            
-            # Clear any pending animations
-            if hasattr(self, 'animation_timer') and self.animation_timer:
-                self.root.after_cancel(self.animation_timer)
-                self.animation_timer = None
-        except Exception as e:
-            print(f"Error in error handler: {str(e)}")
-            # Last resort: try to reset everything
-            self.reset()
+        self.is_animating = False
 
 if __name__ == "__main__":
     root = tk.Tk()
