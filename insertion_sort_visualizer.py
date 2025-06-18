@@ -781,8 +781,25 @@ class InsertionSortVisualizer:
         self.total_iterations = len(self.data)
         self.current_step_completed = True
         self.step_history = []  # Clear step history
+        
+        # Initialize step counters
+        self.current_step_number = 0
+        self.current_substep = 0
+        self.total_steps = 0
+        self.total_substeps = 0
+        
         self.update_statistics()
-        self.insertion_sort(1)
+
+        if self.step_by_step:
+            # Initialize step-by-step state
+            self.step_i = 1
+            self.step_j = None
+            self.step_current = None
+            self.step_mode = 'select'  # select, compare, shift, insert, complete
+            self.paused = True
+            self.step_by_step_sort()
+        else:
+            self.insertion_sort(1)
 
     def toggle_pause(self):
         if not self.sorting:
@@ -878,19 +895,24 @@ class InsertionSortVisualizer:
         
         # Store step in history for step-by-step mode
         if self.step_by_step:
+            # Increment step counters before storing history
+            self.current_step_number += 1
+            self.current_substep += 1
+            self.total_steps = max(self.total_steps, self.current_step_number)
+            self.total_substeps = max(self.total_substeps, self.current_substep)
+            
             self.step_history.append({
                 'data': start_data_copy,
-                'colors': colors_copy.copy(),
-                'description': step_description,
+                'step_i': getattr(self, 'step_i', 0),
+                'step_j': getattr(self, 'step_j', 0),
+                'step_current': getattr(self, 'step_current', 0),
+                'step_mode': getattr(self, 'step_mode', ''),
+                'step_number': self.current_step_number,
                 'substep': self.current_substep,
-                'iteration': self.current_iteration,
                 'comparisons': self.comparisons,
-                'swaps': self.swaps
+                'swaps': self.swaps,
+                'description': step_description
             })
-            self.current_step_number += 1
-            self.total_steps = max(self.total_steps, self.current_step_number)
-            self.current_substep += 1
-            self.total_substeps = max(self.total_substeps, self.current_substep)
             self.prev_step_button.config(state='normal')
         
         self.animation_queue.append(animation)
@@ -904,9 +926,8 @@ class InsertionSortVisualizer:
         """Process the next animation in the queue."""
         if not self.animation_queue:
             self.is_animating = False
-            if self.step_by_step and self.sorting:
-                # If in step-by-step mode and still sorting, continue with next iteration
-                self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
+            # Don't automatically continue in step-by-step mode
+            # Let the user control it with the next button
             return
 
         self.is_animating = True
@@ -942,8 +963,8 @@ class InsertionSortVisualizer:
                 self.paused = True
                 # Ensure we show the final state before moving to next step
                 self.draw_bars(self.animation_data[1], self.animation_colors)
-                if not self.animation_queue:  # If no more animations in queue
-                    self.root.after(50, lambda: self.insertion_sort(self.current_iteration))
+                # Don't automatically continue to next iteration in step-by-step mode
+                # Let the user control it with the next button
             elif not self.paused:
                 self.root.after(50, self.process_animation_queue)
             return
@@ -1182,20 +1203,14 @@ class InsertionSortVisualizer:
         """Proceed to the next step in the sorting process."""
         if not self.sorting or not self.step_by_step:
             return
-            
-        self.paused = False
-        self.current_step_completed = False
         
-        # Process any pending animations first
+        # If there are animations in queue, process them first
         if self.animation_queue:
+            self.paused = False
             self.process_animation_queue()
         else:
-            # If no animations in queue, continue with sorting
-            self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
-            
-        # Update button states
-        self.next_step_button.config(state='normal')
-        self.prev_step_button.config(state='normal' if self.step_history else 'disabled')
+            # If no animations, advance to next step
+            self.step_by_step_sort()
 
     def previous_step(self):
         """Go back to the previous step in the sorting process."""
@@ -1208,29 +1223,44 @@ class InsertionSortVisualizer:
         
         # Get the previous step from history
         prev_step = self.step_history.pop()
-        self.current_step_number -= 1
         
-        # Restore the data and colors
+        # Restore the previous state
         self.data = prev_step['data'].copy()
-        self.animation_colors = prev_step['colors'].copy()
-        self.current_step = prev_step['description']
-        self.current_substep = prev_step['substep']
-        self.current_iteration = prev_step['iteration']
+        self.step_i = prev_step['step_i']
+        self.step_j = prev_step['step_j']
+        self.step_current = prev_step['step_current']
+        self.step_mode = prev_step['step_mode']
         self.comparisons = prev_step['comparisons']
         self.swaps = prev_step['swaps']
         
-        # Update the display
-        self.draw_bars(self.data, self.animation_colors)
+        # Restore step counters
+        if 'step_number' in prev_step:
+            self.current_step_number = prev_step['step_number']
+        if 'substep' in prev_step:
+            self.current_substep = prev_step['substep']
+        
+        # Update the display based on the step mode
+        if self.step_mode == 'select':
+            self.draw_bars(self.data, {"current": [self.step_i], "sorted": list(range(self.step_i))})
+        elif self.step_mode == 'compare':
+            self.draw_bars(self.data, {"current": [self.step_i], "compare": [self.step_j], "sorted": list(range(self.step_i))})
+        elif self.step_mode == 'shift':
+            self.draw_bars(self.data, {"current": [self.step_i], "compare": [self.step_j], "sorted": list(range(self.step_i))})
+        elif self.step_mode == 'shift_move':
+            self.draw_bars(self.data, {"current": [self.step_i], "compare": [self.step_j], "sorted": list(range(self.step_i))})
+        elif self.step_mode == 'insert_point':
+            self.draw_bars(self.data, {"current": [self.step_i], "insert": [self.step_j + 1], "sorted": list(range(self.step_i))})
+        elif self.step_mode == 'insert':
+            self.draw_bars(self.data, {"current": [self.step_i], "insert": [self.step_j + 1], "sorted": list(range(self.step_i))})
+        elif self.step_mode == 'complete':
+            self.draw_bars(self.data, {"sorted": list(range(self.step_i + 1))})
+        
         self.status_label.config(text=prev_step['description'])
         self.update_statistics()
         
         # Enable/disable navigation buttons
         self.prev_step_button.config(state='normal' if self.step_history else 'disabled')
         self.next_step_button.config(state='normal')
-        
-        # Update animation state
-        self.current_step_completed = True
-        self.is_animating = False
 
     def close_window(self):
         """Close the application window."""
@@ -1250,8 +1280,193 @@ class InsertionSortVisualizer:
             print(f"Error during window close: {str(e)}")
             self.root.destroy()
 
+    def step_by_step_sort(self):
+        """Step-by-step sorting with animations."""
+        # If sorting is done
+        if not self.sorting or self.step_i >= len(self.data):
+            self.queue_animation(
+                self.data.copy(),
+                self.data.copy(),
+                {"sorted": list(range(len(self.data)))},
+                "color",
+                "Sorting Complete"
+            )
+            self.status_label.config(text=f"Sorting Complete! Final array: {self.data}")
+            self.sorting = False
+            self.pause_button.config(state='disabled')
+            self.next_step_button.config(state='disabled')
+            self.prev_step_button.config(state='normal')
+            return
+
+        # Step 1: Select current element
+        if self.step_mode == 'select':
+            self.step_current = self.data[self.step_i]
+            self.step_j = self.step_i - 1
+            self.current_iteration = self.step_i
+            
+            step_desc = f"Step {self.step_i}: Selecting element {self.step_current} at position {self.step_i}"
+            
+            # Queue animation instead of direct draw
+            self.queue_animation(
+                self.data.copy(),
+                self.data.copy(),
+                {"current": [self.step_i], "sorted": list(range(self.step_i))},
+                "color",
+                step_desc
+            )
+            
+            self.status_label.config(text=step_desc)
+            self.step_mode = 'compare'
+            return
+
+        # Step 2: Compare
+        if self.step_mode == 'compare':
+            if self.step_j >= 0:
+                self.comparisons += 1
+                
+                step_desc = f"Step {self.step_i}.{self.step_j}: Comparing {self.step_current} with {self.data[self.step_j]} at position {self.step_j}"
+                
+                # Queue animation instead of direct draw
+                self.queue_animation(
+                    self.data.copy(),
+                    self.data.copy(),
+                    {"current": [self.step_i], "compare": [self.step_j], "sorted": list(range(self.step_i))},
+                    "color",
+                    step_desc
+                )
+                
+                self.status_label.config(text=step_desc)
+                
+                if self.data[self.step_j] > self.step_current:
+                    self.step_mode = 'shift'
+                else:
+                    self.step_mode = 'insert_point'
+                return
+            else:
+                self.step_mode = 'insert_point'
+                self.step_by_step_sort()
+                return
+
+        # Step 3: Shift
+        if self.step_mode == 'shift':
+            step_desc = f"Step {self.step_i}.{self.step_j}: {self.data[self.step_j]} > {self.step_current}, need to shift {self.data[self.step_j]} right"
+            
+            # Queue animation instead of direct draw
+            self.queue_animation(
+                self.data.copy(),
+                self.data.copy(),
+                {"current": [self.step_i], "compare": [self.step_j], "sorted": list(range(self.step_i))},
+                "color",
+                step_desc
+            )
+            
+            self.status_label.config(text=step_desc)
+            self.step_mode = 'shift_move'
+            return
+            
+        if self.step_mode == 'shift_move':
+            # Create new data with the shift
+            new_data = self.data.copy()
+            new_data[self.step_j + 1] = self.data[self.step_j]
+            
+            step_desc = f"Step {self.step_i}.{self.step_j}: Shifting {self.data[self.step_j]} from position {self.step_j} to {self.step_j+1}"
+            
+            # Queue animation with movement
+            self.queue_animation(
+                self.data.copy(),
+                new_data,
+                {"current": [self.step_i], "compare": [self.step_j], "sorted": list(range(self.step_i))},
+                "move",
+                step_desc
+            )
+            
+            # Update the actual data
+            self.data[self.step_j + 1] = self.data[self.step_j]
+            self.swaps += 1
+            
+            self.status_label.config(text=step_desc)
+            self.step_j -= 1
+            self.step_mode = 'compare'
+            return
+
+        # Step 4: Insert point
+        if self.step_mode == 'insert_point':
+            step_desc = f"Step {self.step_i}.{self.step_j+1}: Found insertion point at position {self.step_j+1} for element {self.step_current}"
+            
+            # Queue animation instead of direct draw
+            self.queue_animation(
+                self.data.copy(),
+                self.data.copy(),
+                {"current": [self.step_i], "insert": [self.step_j + 1], "sorted": list(range(self.step_i))},
+                "color",
+                step_desc
+            )
+            
+            self.status_label.config(text=step_desc)
+            self.step_mode = 'insert'
+            return
+            
+        # Step 5: Insert
+        if self.step_mode == 'insert':
+            # Create new data with the insertion
+            new_data = self.data.copy()
+            new_data[self.step_j + 1] = self.step_current
+            
+            step_desc = f"Step {self.step_i}.{self.step_j+1}: Inserting {self.step_current} at position {self.step_j+1}"
+            
+            # Queue animation with movement
+            self.queue_animation(
+                self.data.copy(),
+                new_data,
+                {"current": [self.step_i], "insert": [self.step_j + 1], "sorted": list(range(self.step_i))},
+                "move",
+                step_desc
+            )
+            
+            # Update the actual data
+            self.data[self.step_j + 1] = self.step_current
+            self.swaps += 1
+            
+            self.status_label.config(text=step_desc)
+            self.step_mode = 'complete'
+            return
+            
+        # Step 6: Complete
+        if self.step_mode == 'complete':
+            step_desc = f"Step {self.step_i}: Completed insertion of {self.step_current} at position {self.step_j+1}"
+            
+            # Queue animation instead of direct draw
+            self.queue_animation(
+                self.data.copy(),
+                self.data.copy(),
+                {"sorted": list(range(self.step_i + 1))},
+                "color",
+                step_desc
+            )
+            
+            self.status_label.config(text=step_desc)
+            self.step_i += 1
+            self.step_mode = 'select'
+            return
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = InsertionSortVisualizer(root)
     root.mainloop()
+
+    # --- Step-by-step mode quick test/demo ---
+    # To use, uncomment the following lines and run this file.
+    # It will automatically enable step-by-step mode, start sorting, and perform a few steps.
+    #
+    # import time
+    # app.toggle_step_by_step()
+    # app.data = [64, 34, 25, 12, 22, 11, 90]
+    # app.initial_data = app.data.copy()
+    # app.draw_bars(app.data)
+    # app.start_sort()
+    # for _ in range(5):
+    #     app.next_step()
+    #     root.update()
+    #     time.sleep(0.5)
+    # print("Step-by-step demo complete. You can now interact with the GUI.")
    
