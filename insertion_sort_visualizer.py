@@ -205,7 +205,7 @@ class InsertionSortVisualizer:
                           background=[('active', radio_hover),
                                     ('selected', radio_selected)],
                           foreground=[('active', radio_fg),
-                                    ('selected', "#FFFFFF")],
+                                    ('selected', "#FFFFFFD1")],
                           indicatorcolor=[('selected', "#FFFFFF")],
                           indicatorbackground=[('selected', radio_selected)],
                           relief=[('selected', 'flat')],
@@ -213,9 +213,9 @@ class InsertionSortVisualizer:
                           focusthickness=[('selected', 0)])
         else:
             # Light theme colors
-            bg_color = "#F5F5F5"
+            bg_color = "#AAAAAA"
             fg_color = "#333333"
-            accent_color = "#0078D4"
+            accent_color = "#0078D4"    
             button_color = "#E1E1E1"
             hover_color = "#D0D0D0"
             canvas_bg = "#FFFFFF"
