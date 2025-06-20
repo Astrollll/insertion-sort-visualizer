@@ -33,4 +33,8 @@ env/
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Allow dist folder and its contents
+!dist/
+!dist/* 

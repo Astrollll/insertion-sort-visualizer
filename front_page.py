@@ -73,7 +73,7 @@ class App:
 
         # Logo
         try:
-            image_path = os.path.join(os.path.dirname(__file__), 'Cavite_State_University_(CvSU).png')
+            image_path = os.path.join(os.path.dirname(__file__), 'dist', 'Cavite_State_University_(CvSU).png')
             pil_image = Image.open(image_path)
             pil_image = pil_image.resize((54, 54), Image.Resampling.LANCZOS)
             self.logo_image = ImageTk.PhotoImage(pil_image)
