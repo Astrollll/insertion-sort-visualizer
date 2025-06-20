@@ -6,6 +6,9 @@ import time
 
 class InsertionSortVisualizer:
     def __init__(self, root):
+        """
+        Set up the main window and initialize all variables and UI components for the insertion sort visualizer.
+        """
         self.root = root
         self.root.title("Insertion Sort Visualizer")
         # Set window to full screen and disable restore down
@@ -81,6 +84,9 @@ class InsertionSortVisualizer:
         self.build_ui()
 
     def configure_style(self):
+        """
+        Configure the visual style for the application, including dark and light themes and custom widget styles.
+        """
         self.style.theme_use('clam')
         
         if self.is_dark_theme:
@@ -215,6 +221,9 @@ class InsertionSortVisualizer:
                           focusthickness=[('selected', 0)])
 
     def build_ui(self):
+        """
+        Build and arrange all UI elements for the visualizer, including controls, canvas, and statistics.
+        """
         # Main container with padding
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -412,7 +421,9 @@ class InsertionSortVisualizer:
         ttk.Label(shortcuts_frame, text=shortcuts_text, font=("Segoe UI", 8)).pack(side=tk.LEFT)
 
     def set_speed(self, speed_value, speed_text):
-        """Set the animation speed and update the speed label."""
+        """
+        Update the animation speed and adjust the speed indicator label.
+        """
         try:
             self.speed = speed_value
             self.speed_indicator.config(text=f"Speed: {speed_text}")
@@ -575,7 +586,9 @@ class InsertionSortVisualizer:
             # Just log it and continue
 
     def submit_input(self):
-        """Handle user input submission."""
+        """
+        Handle the event when the user submits a new array for sorting.
+        """
         if self.sorting:
             messagebox.showwarning("Warning", "Cannot submit new array while sorting is in progress.")
             return
@@ -601,7 +614,9 @@ class InsertionSortVisualizer:
                                 button.config(state='normal')
 
     def parse_input(self):
-        """Parse and validate user input."""
+        """
+        Parse and validate the user's input from the entry field.
+        """
         raw = self.input_entry.get().strip()
         try:
             if not raw:
@@ -639,6 +654,9 @@ class InsertionSortVisualizer:
             return False
 
     def update_statistics(self):
+        """
+        Refresh the statistics labels and progress bar based on the current sorting state.
+        """
         self.comparisons_label.config(text=f"Comparisons: {self.comparisons}")
         self.swaps_label.config(text=f"Swaps: {self.swaps}")
         self.iteration_label.config(text=f"Iteration: {self.current_iteration}/{self.total_iterations}")
@@ -649,6 +667,9 @@ class InsertionSortVisualizer:
             self.progress_var.set(progress)
 
     def reset(self):
+        """
+        Reset the visualizer to its initial state, clearing the canvas and statistics.
+        """
         self.canvas.delete("all")
         if hasattr(self, 'initial_data') and self.initial_data is not None:
             self.data = self.initial_data.copy()
@@ -674,7 +695,9 @@ class InsertionSortVisualizer:
         self.update_statistics()
 
     def start_sort(self):
-        """Start the sorting process."""
+        """
+        Begin the insertion sort process, either in normal or step-by-step mode.
+        """
         if self.sorting:
             return
 
@@ -715,6 +738,9 @@ class InsertionSortVisualizer:
             self.insertion_sort(1)
 
     def toggle_pause(self):
+        """
+        Pause or resume the sorting animation.
+        """
         if not self.sorting:
             return
         self.paused = not self.paused
@@ -724,7 +750,9 @@ class InsertionSortVisualizer:
             self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
     def toggle_step_by_step(self):
-        """Toggle step-by-step mode."""
+        """
+        Enable or disable step-by-step sorting mode.
+        """
         self.step_by_step = not self.step_by_step
         if self.step_by_step:
             self.status_label.config(text="Step-by-Step mode enabled - Press 'Next Step' to proceed")
@@ -747,6 +775,9 @@ class InsertionSortVisualizer:
                 self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
     def toggle_theme(self):
+        """
+        Switch between dark and light themes for the application.
+        """
         try:
             self.is_dark_theme = not self.is_dark_theme
             self.configure_style()  # Update styles based on theme
@@ -759,6 +790,9 @@ class InsertionSortVisualizer:
             messagebox.showerror("Error", "Failed to switch theme")
 
     def interpolate_color(self, color1, color2, factor):
+        """
+        Blend two colors together by a given factor (0.0 to 1.0).
+        """
         # Check cache first
         cache_key = (color1, color2, factor)
         if cache_key in self._cached_colors:
@@ -786,6 +820,9 @@ class InsertionSortVisualizer:
         return result
 
     def queue_animation(self, start_data, end_data, colors, animation_type, step_description=None):
+        """
+        Add an animation step to the queue for smooth transitions during sorting.
+        """
         # Ensure colors are properly copied and maintained
         colors_copy = {}
         for key, value in colors.items():
@@ -835,7 +872,9 @@ class InsertionSortVisualizer:
             self.process_animation_queue()
 
     def process_animation_queue(self):
-        """Process the next animation in the queue."""
+        """
+        Process the next animation in the queue, if any.
+        """
         if not self.animation_queue:
             self.is_animating = False
             # Don't automatically continue in step-by-step mode
@@ -853,6 +892,9 @@ class InsertionSortVisualizer:
         )
 
     def animate_transition(self, start_data, end_data, colors, animation_type, step_description=None):
+        """
+        Animate the transition between two data states.
+        """
         self.animation_data = (start_data, end_data)
         self.animation_colors = colors
         self.animation_type = animation_type
@@ -863,7 +905,9 @@ class InsertionSortVisualizer:
         self.animate_frame()
 
     def animate_frame(self):
-        """Animate a single frame of the current transition."""
+        """
+        Draw a single frame of the current animation.
+        """
         if self.paused and not self.step_by_step:
             return
             
@@ -913,10 +957,15 @@ class InsertionSortVisualizer:
             self.root.after(next_frame_delay, self.animate_frame)
 
     def ease_in_out_quad(self, t):
+        """
+        Easing function for smoother animation transitions.
+        """
         return t * t * (3 - 2 * t)
 
     def insertion_sort(self, i):
-        """Perform one step of insertion sort."""
+        """
+        Perform one iteration of the insertion sort algorithm.
+        """
         if not self.sorting:
             return
 
@@ -1099,6 +1148,9 @@ class InsertionSortVisualizer:
         self.root.after(self.speed, lambda: self.insertion_sort(i + 1))
 
     def on_canvas_resize(self, event):
+        """
+        Handle canvas resizing and redraw the bars accordingly.
+        """
         try:
             # Update canvas dimensions
             self.canvas_width = max(100, event.width)  # Ensure minimum width
@@ -1111,7 +1163,9 @@ class InsertionSortVisualizer:
             print(f"Error during canvas resize: {str(e)}")
 
     def next_step(self):
-        """Proceed to the next step in the sorting process."""
+        """
+        Move to the next step in step-by-step sorting mode.
+        """
         if not self.sorting or not self.step_by_step:
             return
         
@@ -1124,7 +1178,9 @@ class InsertionSortVisualizer:
             self.step_by_step_sort()
 
     def step_by_step_sort(self):
-        """Step-by-step sorting with animations."""
+        """
+        Execute the insertion sort in step-by-step mode, allowing user control over each step.
+        """
         # If sorting is done
         if not self.sorting or self.step_i >= len(self.data):
             self.queue_animation(
@@ -1292,7 +1348,9 @@ class InsertionSortVisualizer:
             return
 
     def close_window(self):
-        """Close the application window."""
+        """
+        Safely close the application window and clean up resources.
+        """
         try:
             # Clear any pending animations
             if hasattr(self, 'animation_timer') and self.animation_timer:
