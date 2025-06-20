@@ -4,68 +4,6 @@ import random
 import math
 import time
 
-class Tooltip:
-    def __init__(self, widget, text):
-        self.widget = widget
-        self.text = text
-        self.tooltip = None
-        self.widget.bind("<Enter>", self.enter)
-        self.widget.bind("<Leave>", self.leave)
-        self.widget.bind("<Motion>", self.motion)
-        self.after_id = None
-        self.last_x = 0
-        self.last_y = 0
-
-    def enter(self, event=None):
-        self.last_x = event.x_root
-        self.last_y = event.y_root
-        self.schedule_tooltip()
-
-    def motion(self, event=None):
-        # Only update if mouse has moved significantly
-        if abs(event.x_root - self.last_x) > 5 or abs(event.y_root - self.last_y) > 5:
-            self.last_x = event.x_root
-            self.last_y = event.y_root
-            if self.tooltip:
-                self.update_tooltip_position()
-
-    def schedule_tooltip(self):
-        if self.after_id:
-            self.widget.after_cancel(self.after_id)
-        self.after_id = self.widget.after(100, self.show_tooltip)
-
-    def show_tooltip(self):
-        if self.tooltip:
-            return
-
-        x = self.widget.winfo_rootx() + self.widget.winfo_width() + 5
-        y = self.widget.winfo_rooty() + (self.widget.winfo_height() // 2)
-        
-        self.tooltip = tk.Toplevel(self.widget)
-        self.tooltip.wm_overrideredirect(True)
-        self.tooltip.wm_geometry(f"+{x}+{y}")
-        
-        frame = ttk.Frame(self.tooltip, style="Tooltip.TFrame")
-        frame.pack()
-        
-        label = ttk.Label(frame, text=self.text, style="Tooltip.TLabel")
-        label.pack(padx=5, pady=2)
-
-    def update_tooltip_position(self):
-        if not self.tooltip:
-            return
-        x = self.widget.winfo_rootx() + self.widget.winfo_width() + 5
-        y = self.widget.winfo_rooty() + (self.widget.winfo_height() // 2)
-        self.tooltip.wm_geometry(f"+{x}+{y}")
-
-    def leave(self, event=None):
-        if self.after_id:
-            self.widget.after_cancel(self.after_id)
-            self.after_id = None
-        if self.tooltip:
-            self.tooltip.destroy()
-            self.tooltip = None
-
 class InsertionSortVisualizer:
     def __init__(self, root):
         self.root = root
@@ -292,15 +230,10 @@ class InsertionSortVisualizer:
         ttk.Label(input_frame, text="Enter Numbers:", font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT, padx=(0, 5))
         self.input_entry = ttk.Entry(input_frame, width=40)
         self.input_entry.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(self.input_entry, "Enter a comma-separated list of integers")
         
         # Add submit button for user input
         submit_btn = ttk.Button(input_frame, text="Submit", command=self.submit_input)
         submit_btn.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(submit_btn, "Submit your array for sorting")
-        
-        # Bind Enter key to submit
-        self.input_entry.bind('<Return>', lambda e: self.submit_input())
 
         # Random generation section
         random_frame = ttk.Frame(control_frame)
@@ -308,12 +241,10 @@ class InsertionSortVisualizer:
         
         self.length_spinbox = ttk.Spinbox(random_frame, from_=5, to=50, width=5)
         self.length_spinbox.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(self.length_spinbox, "Set the length for random list generation")
         self.length_spinbox.bind('<Return>', lambda e: self.generate_random())
 
         generate_btn = ttk.Button(random_frame, text="Generate Random", command=self.generate_random)
         generate_btn.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(generate_btn, "Click to generate a random list")
 
         # Speed control section
         speed_frame = ttk.Frame(control_frame)
@@ -353,7 +284,6 @@ class InsertionSortVisualizer:
                 style="Speed.TRadiobutton"
             )
             radio.pack(side=tk.LEFT, padx=1)
-            self.add_tooltip(radio, f"Set animation speed to {text.lower()}")
         
         # Set initial speed
         self.speed = 500  # Default to normal speed
@@ -440,19 +370,15 @@ class InsertionSortVisualizer:
         
         start_btn = ttk.Button(left_buttons, text="Start Sort (S)", command=self.start_sort)
         start_btn.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(start_btn, "Start sorting (Shortcut: S)")
         
         self.pause_button = ttk.Button(left_buttons, text="Pause (Space)", command=self.toggle_pause, state='disabled')
         self.pause_button.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(self.pause_button, "Pause/Resume sorting (Shortcut: Space)")
         
         reset_btn = ttk.Button(left_buttons, text="Reset (R)", command=self.reset)
         reset_btn.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(reset_btn, "Reset visualization (Shortcut: R)")
         
         step_btn = ttk.Button(left_buttons, text="Step-by-Step (B)", command=self.toggle_step_by_step)
         step_btn.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(step_btn, "Toggle step-by-step mode (Shortcut: B)")
 
         # Add step navigation buttons
         step_nav_frame = ttk.Frame(left_buttons)
@@ -460,17 +386,14 @@ class InsertionSortVisualizer:
         
         self.next_step_button = ttk.Button(step_nav_frame, text="Next Step (N)", command=self.next_step)
         self.next_step_button.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(self.next_step_button, "Proceed to next step (Shortcut: N)")
 
         # Right side theme toggle
         self.theme_button = ttk.Button(button_frame, text="Switch Theme (T)", command=self.toggle_theme)
         self.theme_button.pack(side=tk.RIGHT, padx=5)
-        self.add_tooltip(self.theme_button, "Switch between light and dark themes (Shortcut: T)")
 
         # Add close button
         close_btn = ttk.Button(button_frame, text="Close Window", command=self.close_window)
         close_btn.pack(side=tk.RIGHT, padx=5)
-        self.add_tooltip(close_btn, "Close the application")
 
         # Status bar
         status_frame = ttk.Frame(main_frame)
@@ -650,9 +573,6 @@ class InsertionSortVisualizer:
             print(f"Error drawing bars: {str(e)}")
             # Don't show error message for drawing errors to avoid spam
             # Just log it and continue
-
-    def add_tooltip(self, widget, text):
-        Tooltip(widget, text)
 
     def submit_input(self):
         """Handle user input submission."""
