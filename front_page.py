@@ -189,12 +189,12 @@ class App:
         )
         dev_label.pack(anchor="w", padx=30)
         devs = [
-            "• Jason, Ivan",
-            "• Llamson, Joshua",
-            "• Marco, Jade",
-            "• Pate, Mark",
+            "• Joson, Ivan",
+            "• Mamorno, Joshua",
+            "• Miano, Mike Jester",
+            "• Pilar, Mark Aljon",
             "• Santos, Dave Ulrich",
-            "• Todeña, Cedrick"
+            "• Toledana, Cedrick"
         ]
         for dev in devs:
             tk.Label(right_content, text=dev, font=("Arial", 10), fg="#e0e6f0", bg=panel_color).pack(anchor="w", padx=48, pady=0)
