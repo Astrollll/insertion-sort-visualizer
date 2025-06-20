@@ -53,7 +53,7 @@ python front_page.py
 
 ## Credits
 - Cavite State University - Silang Campus
-- Developed by: Jason Ivan, Llamson Joshua, Marco Jade, Pate Mark, Santos Dave Ulrich, Todeña Cedrick
+- Developed by: Joson, Ivan; Mamorno, Joshua; Miano, Mike Jester; Pilar, Mark Aljon; Santos, Dave Ulrich; Toledana, Cedrick
 
 ## License
 
