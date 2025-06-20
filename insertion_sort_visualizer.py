@@ -200,12 +200,11 @@ class InsertionSortVisualizer:
                                borderwidth=1,
                                relief="flat",
                                focusthickness=0)
-            
             self.style.map("Speed.TRadiobutton",
                           background=[('active', radio_hover),
                                     ('selected', radio_selected)],
                           foreground=[('active', radio_fg),
-                                    ('selected', "#FFFFFFD1")],
+                                    ('selected', "#FFFFFF")],
                           indicatorcolor=[('selected', "#FFFFFF")],
                           indicatorbackground=[('selected', radio_selected)],
                           relief=[('selected', 'flat')],
@@ -266,7 +265,6 @@ class InsertionSortVisualizer:
                                borderwidth=1,
                                relief="flat",
                                focusthickness=0)
-            
             self.style.map("Speed.TRadiobutton",
                           background=[('active', radio_hover),
                                     ('selected', radio_selected)],
