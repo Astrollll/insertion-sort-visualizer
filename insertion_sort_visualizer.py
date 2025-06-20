@@ -682,11 +682,9 @@ class InsertionSortVisualizer:
             if not self.parse_input():
                 return
 
-        # Store the initial data for reference
-        self.initial_data = self.data.copy()
         self.sorting = True
         self.pause_button.config(state='normal')
-        self.next_step_button.config(state='normal' if self.step_by_step else 'disabled')
+        self.next_step_button.config(state='disabled')
         self.status_label.config(text="Sorting in progress...")
         self.comparisons = 0
         self.swaps = 0
@@ -704,14 +702,17 @@ class InsertionSortVisualizer:
         self.update_statistics()
 
         if self.step_by_step:
-            # Initialize step-by-step state
             self.step_i = 1
             self.step_j = None
             self.step_current = None
             self.step_mode = 'select'  # select, compare, shift, insert, complete
             self.paused = True
+            self.next_step_button.config(state='normal')
             self.step_by_step_sort()
         else:
+            self.step_by_step = False  # disable step-by-step if normal sorting
+            self.next_step_button.config(state='disabled')
+            self.pause_button.config(state='normal')
             self.insertion_sort(1)
 
     # Pause
@@ -727,31 +728,22 @@ class InsertionSortVisualizer:
             self.process_animation_queue()
             self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
-    # Step mode
+    # Step by step mode
     def toggle_step_by_step(self):
-        """
-        Toggle step mode.
-        """
+        # Only allow clicking if not currently sorting
+        if self.sorting:
+            messagebox.showinfo("Info", "Cannot use Step-by-Step mode while automatic sorting is in progress.")
+            return
         self.step_by_step = not self.step_by_step
         if self.step_by_step:
             self.status_label.config(text="Step-by-Step mode enabled - Press 'Next Step' to proceed")
             self.paused = True
             self.pause_button.config(text="Resume", state='disabled')
             self.next_step_button.config(state='normal')
-            # If we're in the middle of sorting, ensure we're paused
-            if self.sorting:
-                self.paused = True
-                # Clear any pending animations
-                self.animation_queue.clear()
-                self.is_animating = False
         else:
             self.status_label.config(text="Step-by-Step mode disabled")
             self.pause_button.config(state='normal')
             self.next_step_button.config(state='disabled')
-            if self.sorting:
-                self.paused = False
-                self.process_animation_queue()
-                self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
     # Theme
     def toggle_theme(self):
@@ -760,7 +752,7 @@ class InsertionSortVisualizer:
         """
         try:
             self.is_dark_theme = not self.is_dark_theme
-            self.configure_style()  # Update styles based on theme
+            self.configure_style()  # Update colors based on theme
             self.canvas.config(bg="#3B4252" if self.is_dark_theme else "#ECEFF4")
             self.status_label.config(foreground="#A3BE8C" if self.is_dark_theme else "#2E3440")
             if self.data:  # Redraw with new theme
