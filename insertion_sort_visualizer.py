@@ -284,12 +284,7 @@ class InsertionSortVisualizer:
         self.canvas.bind('<Configure>', self.on_canvas_resize)
         
         # Add keyboard shortcuts
-        self.root.bind('<space>', lambda e: self.toggle_pause())
-        self.root.bind('<r>', lambda e: self.reset())
-        self.root.bind('<s>', lambda e: self.start_sort())
         self.root.bind('<t>', lambda e: self.toggle_theme())
-        self.root.bind('<b>', lambda e: self.toggle_step_by_step())
-        self.root.bind('<n>', lambda e: self.next_step())  # Add keyboard shortcut for next step
 
         # Statistics Frame
         stats_frame = ttk.Frame(main_frame)
@@ -348,23 +343,23 @@ class InsertionSortVisualizer:
         left_buttons = ttk.Frame(button_frame)
         left_buttons.pack(side=tk.LEFT)
         
-        start_btn = ttk.Button(left_buttons, text="Start Sort (S)", command=self.start_sort)
+        start_btn = ttk.Button(left_buttons, text="Start Sort", command=self.start_sort)
         start_btn.pack(side=tk.LEFT, padx=5)
         
-        self.pause_button = ttk.Button(left_buttons, text="Pause (Space)", command=self.toggle_pause, state='disabled')
+        self.pause_button = ttk.Button(left_buttons, text="Pause", command=self.toggle_pause, state='disabled')
         self.pause_button.pack(side=tk.LEFT, padx=5)
         
-        reset_btn = ttk.Button(left_buttons, text="Reset (R)", command=self.reset)
+        reset_btn = ttk.Button(left_buttons, text="Reset", command=self.reset)
         reset_btn.pack(side=tk.LEFT, padx=5)
         
-        step_btn = ttk.Button(left_buttons, text="Step-by-Step (B)", command=self.toggle_step_by_step)
-        step_btn.pack(side=tk.LEFT, padx=5)
+        self.step_btn = ttk.Button(left_buttons, text="Step-by-Step", command=self.toggle_step_by_step)
+        self.step_btn.pack(side=tk.LEFT, padx=5)
 
         # Add step navigation buttons
         step_nav_frame = ttk.Frame(left_buttons)
         step_nav_frame.pack(side=tk.LEFT, padx=20)
         
-        self.next_step_button = ttk.Button(step_nav_frame, text="Next Step (N)", command=self.next_step)
+        self.next_step_button = ttk.Button(step_nav_frame, text="Next Step", command=self.next_step)
         self.next_step_button.pack(side=tk.LEFT, padx=5)
 
         # Right side theme toggle
@@ -384,12 +379,6 @@ class InsertionSortVisualizer:
                                     font=("Segoe UI", 11, "bold"),
                                     foreground="#A3BE8C" if self.is_dark_theme else "#2E3440")
         self.status_label.pack(side=tk.LEFT)
-
-        # Add keyboard shortcuts help
-        shortcuts_frame = ttk.Frame(main_frame)
-        shortcuts_frame.pack(fill=tk.X, pady=(5, 0))
-        shortcuts_text = "Keyboard Shortcuts: Space (Pause/Resume) | S (Start) | R (Reset) | T (Theme) | B (Step-by-Step) | N (Next Step)"
-        ttk.Label(shortcuts_frame, text=shortcuts_text, font=("Segoe UI", 8)).pack(side=tk.LEFT)
 
     # Speed
     def set_speed(self, speed_value, speed_text):
@@ -583,7 +572,7 @@ class InsertionSortVisualizer:
                 for child in widget.winfo_children():
                     if isinstance(child, ttk.Frame):
                         for button in child.winfo_children():
-                            if isinstance(button, ttk.Button) and button.cget('text') == "Start Sort (S)":
+                            if isinstance(button, ttk.Button) and button.cget('text') == "Start Sort":
                                 button.config(state='normal')
 
     # Parse
@@ -669,6 +658,8 @@ class InsertionSortVisualizer:
         self.animation_queue = []  # Clear animation queue
         self.is_animating = False
         self.update_statistics()
+        self.step_btn.config(state='normal')  # Enable Step-by-Step after reset
+        self.root.bind('<b>', lambda e: self.toggle_step_by_step())  # Re-enable shortcut after reset
 
     # Start
     def start_sort(self):
@@ -680,6 +671,7 @@ class InsertionSortVisualizer:
 
         if not self.data:
             if not self.parse_input():
+                self.step_btn.config(state='normal')  # Enable Step-by-Step if sorting aborted
                 return
 
         self.sorting = True
@@ -700,7 +692,8 @@ class InsertionSortVisualizer:
         self.total_substeps = 0
         
         self.update_statistics()
-
+        self.step_btn.config(state='disabled')  # Disable Step-by-Step when sorting starts
+        self.root.unbind('<b>')  # Disable shortcut during sorting
         if self.step_by_step:
             self.step_i = 1
             self.step_j = None
@@ -724,9 +717,18 @@ class InsertionSortVisualizer:
             return
         self.paused = not self.paused
         self.pause_button.config(text="Resume" if self.paused else "Pause")
+        # Always disable step-by-step button during automatic sorting
+        if hasattr(self, 'step_btn'):
+            self.step_btn.config(state='disabled')
         if not self.paused and not self.step_by_step:
-            self.process_animation_queue()
-            self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
+            # If an animation is in paused and press resume, continue it
+            if self.is_animating:
+                self.animate_frame()
+            elif self.animation_queue:
+                self.process_animation_queue()
+            else:
+                # If nothing is animating or queued, continue sorting
+                self.insertion_sort(self.current_iteration)
 
     # Step by step mode
     def toggle_step_by_step(self):
@@ -960,6 +962,8 @@ class InsertionSortVisualizer:
             self.sorting = False
             self.pause_button.config(state='disabled')
             self.next_step_button.config(state='disabled')
+            self.step_btn.config(state='normal')  # Enable Step-by-Step after sorting
+            self.root.bind('<b>', lambda e: self.toggle_step_by_step())  # Re-enable shortcut after sorting
             return
 
         if self.paused and not self.step_by_step:
@@ -1176,6 +1180,8 @@ class InsertionSortVisualizer:
             self.sorting = False
             self.pause_button.config(state='disabled')
             self.next_step_button.config(state='disabled')
+            self.step_btn.config(state='normal')  # Enable Step-by-Step after sorting
+            self.root.bind('<b>', lambda e: self.toggle_step_by_step())  # Re-enable shortcut after sorting
             return
 
         # Step 1: Select current element
