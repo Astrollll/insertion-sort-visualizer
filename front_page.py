@@ -1,8 +1,10 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import os
 import math # Not strictly needed for this change, but keeping for flap disc if used
+import subprocess
+import sys
 
 class RoundedRectangleCanvas(tk.Canvas):
     """
@@ -74,17 +76,17 @@ class App:
 
         # Load the image using PIL and convert it to PhotoImage
         try:
-            image_path = 'C:/Users/PC5/Documents/Project/Img/Cavite_State_University_(CvSU).png'
-            pil_image = Image.open(image_path)
-            pil_image = pil_image.resize((60, 60), Image.Resampling.LANCZOS) # Smaller size for logo
-            self.logo_image = ImageTk.PhotoImage(pil_image)
+             image_path = 'C:/Users/PC5/Documents/Project/Img/Cavite_State_University_(CvSU).png'
+             pil_image = Image.open(image_path)
+             pil_image = pil_image.resize((60, 60), Image.Resampling.LANCZOS) # Smaller size for logo
+             self.logo_image = ImageTk.PhotoImage(pil_image)
             
-            self.logo_label = tk.Label(self.header_frame, image=self.logo_image, bg=self.root['bg'])
-            self.logo_label.grid(row=0, column=0, rowspan=3, sticky="w", padx=(0, 10)) # Span 3 rows for vertical alignment
+             self.logo_label = tk.Label(self.header_frame, image=self.logo_image, bg=self.root['bg'])
+             self.logo_label.grid(row=0, column=0, rowspan=3, sticky="w", padx=(0, 10)) # Span 3 rows for vertical alignment
         except FileNotFoundError:
-            print(f"Error: Image file not found at {image_path}")
-            self.logo_label = tk.Label(self.header_frame, text="Logo Missing", bg=self.root['bg'], fg="red", font=("Arial", 10))
-            self.logo_label.grid(row=0, column=0, rowspan=3, sticky="w", padx=(0, 10))
+             print(f"Error: Image file not found at {image_path}")
+             self.logo_label = tk.Label(self.header_frame, text="Logo Missing", bg=self.root['bg'], fg="red", font=("Arial", 10))
+             self.logo_label.grid(row=0, column=0, rowspan=3, sticky="w", padx=(0, 10))
 
         # Text next to the logo - now split into multiple labels for different fonts
         self.cvsu_label = tk.Label(
@@ -237,9 +239,23 @@ class App:
         # Center the button within its new parent (bottom_inner_rect)
         self.go_sort_button.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.8, relheight=0.6)
 
-
+    #button redirection
     def on_go_sort_click(self):
-        print("Dito sana ung pag disclose papunta na sa sort vizualizer! (This would transition to a sorting visualization frame)")
+        print("Redirecting to loading screen...")
+        try:
+            # Get the directory of the current script
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            loading_screen_path = os.path.join(current_dir, "loading_screen.py")
+            
+            # Launch the loading screen using the same Python interpreter
+            subprocess.Popen([sys.executable, loading_screen_path])
+            
+            # Close the current window
+            self.root.destroy()
+        except Exception as e:
+            print(f"Error launching loading screen: {e}")
+            # Fallback: show an error message
+            tk.messagebox.showerror("Error", f"Could not launch loading screen: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
