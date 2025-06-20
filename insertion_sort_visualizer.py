@@ -736,7 +736,7 @@ class InsertionSortVisualizer:
             return
         self.step_by_step = not self.step_by_step
         if self.step_by_step:
-            self.status_label.config(text="Step-by-Step mode enabled - Press 'Next Step' to proceed")
+            self.status_label.config(text="Step-by-Step mode enabled - Press 'Start' button to start sorting and 'Next Step' to proceed")
             self.paused = True
             self.pause_button.config(text="Resume", state='disabled')
             self.next_step_button.config(state='normal')
