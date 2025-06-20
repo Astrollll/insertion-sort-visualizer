@@ -659,7 +659,6 @@ class InsertionSortVisualizer:
         self.is_animating = False
         self.update_statistics()
         self.step_btn.config(state='normal')  # Enable Step-by-Step after reset
-        self.root.bind('<b>', lambda e: self.toggle_step_by_step())  # Re-enable shortcut after reset
 
     # Start
     def start_sort(self):
@@ -693,19 +692,19 @@ class InsertionSortVisualizer:
         
         self.update_statistics()
         self.step_btn.config(state='disabled')  # Disable Step-by-Step when sorting starts
-        self.root.unbind('<b>')  # Disable shortcut during sorting
         if self.step_by_step:
             self.step_i = 1
             self.step_j = None
             self.step_current = None
             self.step_mode = 'select'  # select, compare, shift, insert, complete
             self.paused = True
+            self.pause_button.config(text="Resume", state='disabled')
             self.next_step_button.config(state='normal')
             self.step_by_step_sort()
         else:
             self.step_by_step = False  # disable step-by-step if normal sorting
             self.next_step_button.config(state='disabled')
-            self.pause_button.config(state='normal')
+            self.pause_button.config(text="Pause", state='normal')
             self.insertion_sort(1)
 
     # Pause
@@ -744,7 +743,7 @@ class InsertionSortVisualizer:
             self.next_step_button.config(state='normal')
         else:
             self.status_label.config(text="Step-by-Step mode disabled")
-            self.pause_button.config(state='normal')
+            self.pause_button.config(text="Pause", state='normal')
             self.next_step_button.config(state='disabled')
 
     # Theme
@@ -963,7 +962,6 @@ class InsertionSortVisualizer:
             self.pause_button.config(state='disabled')
             self.next_step_button.config(state='disabled')
             self.step_btn.config(state='normal')  # Enable Step-by-Step after sorting
-            self.root.bind('<b>', lambda e: self.toggle_step_by_step())  # Re-enable shortcut after sorting
             return
 
         if self.paused and not self.step_by_step:
@@ -1181,7 +1179,6 @@ class InsertionSortVisualizer:
             self.pause_button.config(state='disabled')
             self.next_step_button.config(state='disabled')
             self.step_btn.config(state='normal')  # Enable Step-by-Step after sorting
-            self.root.bind('<b>', lambda e: self.toggle_step_by_step())  # Re-enable shortcut after sorting
             return
 
         # Step 1: Select current element
