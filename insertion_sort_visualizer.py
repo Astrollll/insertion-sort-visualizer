@@ -4,41 +4,36 @@ import random
 import math
 import time
 
+def main():
+    # Main run
+    root = tk.Tk()
+    app = InsertionSortVisualizer(root)
+    root.mainloop()
+
 class InsertionSortVisualizer:
+    # Init
     def __init__(self, root):
-        """
-        Set up the main window and initialize all variables and UI components for the insertion sort visualizer.
-        """
         self.root = root
         self.root.title("Insertion Sort Visualizer")
-        # Set window to full screen and disable restore down
-        self.root.state('zoomed')  # For Windows
-        self.root.attributes('-fullscreen', True)  # For cross-platform support
+        self.root.state('zoomed')
+        self.root.attributes('-fullscreen', True)
         self.root.minsize(800, 500)
-        
-        # Default theme is dark
         self.is_dark_theme = True
-        
-        # Canvas dimensions - will be updated in build_ui
         self.canvas_width = 0
         self.canvas_height = 0
         self.speed = 100
         self.data = []
-        self.initial_data = None  # Store initial data
+        self.initial_data = None
         self.paused = False
         self.sorting = False
         self.step_by_step = False
-        self.current_step_completed = True  # Track if current step is completed
-        self.current_animation = None  # Track current animation
-        
-        # Statistics
+        self.current_step_completed = True
+        self.current_animation = None
         self.comparisons = 0
         self.swaps = 0
         self.current_iteration = 0
         self.total_iterations = 0
-        self.step_count = 0  # Track total steps taken
-        
-        # Animation properties
+        self.step_count = 0
         self.animation_frames = 30
         self.current_frame = 0
         self.animation_data = None
@@ -47,50 +42,37 @@ class InsertionSortVisualizer:
         self.current_step = None
         self.animation_queue = []
         self.is_animating = False
-        self.animation_speed_factor = 1.0  # For smooth speed transitions
-        
-        # Performance optimization
-        self._cached_colors = {}  # Cache for interpolated colors
-        self._last_draw_time = 0  # For frame rate limiting
-        self._min_frame_time = 16  # ~60 FPS
-        
-        # Color definitions
+        self.animation_speed_factor = 1.0
+        self._cached_colors = {}
+        self._last_draw_time = 0
+        self._min_frame_time = 16
         self.colors = {
-            'default': "#4C566A",    # Gray for unsorted
-            'current': "#EBCB8B",    # Yellow for current
-            'compare': "#BF616A",    # Red for comparison
-            'sorted': "#A3BE8C",     # Green for sorted
-            'insert': "#81A1C1",     # Blue for insertion
-            'text': "#ECEFF4",       # Text color
-            'text_bg': "#2E3440"     # Text background color
+            'default': "#4C566A",
+            'current': "#EBCB8B",
+            'compare': "#BF616A",
+            'sorted': "#A3BE8C",
+            'insert': "#81A1C1",
+            'text': "#ECEFF4",
+            'text_bg': "#2E3440"
         }
-
         self.style = ttk.Style()
         self.configure_style()
-
-        self.current_step_number = 0  # Track current step number
-        self.total_steps = 0  # Track total steps
-        self.step_history = []  # Store step history
-        self.current_substep = 0  # Track current substep
-        self.total_substeps = 0  # Track total substeps
-        
-        # Initialize UI elements
+        self.current_step_number = 0
+        self.total_steps = 0
+        self.step_history = []
+        self.current_substep = 0
+        self.total_substeps = 0
         self.speed_indicator = None
         self.prev_step_button = None
         self.next_step_button = None
         self.step_label = None
         self.substep_label = None
-
         self.build_ui()
 
+    # Style
     def configure_style(self):
-        """
-        Configure the visual style for the application, including dark and light themes and custom widget styles.
-        """
         self.style.theme_use('clam')
-        
         if self.is_dark_theme:
-            # Dark theme colors
             bg_color = "#1E1E1E"
             fg_color = "#FFFFFF"
             accent_color = "#007ACC"
@@ -105,7 +87,6 @@ class InsertionSortVisualizer:
             radio_hover = "#3E3E3E"
             radio_border = "#404040"
             radio_container_bg = "#252526"
-            
             self.style.configure("TFrame", background=bg_color)
             self.style.configure("TLabel", background=bg_color, foreground=text_color, font=("Segoe UI", 10))
             self.style.configure("TButton",
@@ -126,13 +107,10 @@ class InsertionSortVisualizer:
             self.style.configure("Tooltip.TFrame", background="#2D2D2D")
             self.style.configure("Tooltip.TLabel", background="#2D2D2D", foreground="#FFFFFF")
             self.style.configure("CanvasBorder.TFrame", background=border_color)
-            
-            # Enhanced radio button styling for dark theme
             self.style.configure("Speed.TFrame",
                                background=radio_container_bg,
                                relief="flat",
                                borderwidth=1)
-            
             self.style.configure("Speed.TRadiobutton",
                                background=radio_bg,
                                foreground=radio_fg,
@@ -155,7 +133,6 @@ class InsertionSortVisualizer:
                           borderwidth=[('selected', 0)],
                           focusthickness=[('selected', 0)])
         else:
-            # Light theme colors
             bg_color = "#AAAAAA"
             fg_color = "#333333"
             accent_color = "#0078D4"    
@@ -170,7 +147,6 @@ class InsertionSortVisualizer:
             radio_hover = "#F0F0F0"
             radio_border = "#E0E0E0"
             radio_container_bg = "#F8F8F8"
-            
             self.style.configure("TFrame", background=bg_color)
             self.style.configure("TLabel", background=bg_color, foreground=text_color, font=("Segoe UI", 10))
             self.style.configure("TButton",
@@ -191,13 +167,10 @@ class InsertionSortVisualizer:
             self.style.configure("Tooltip.TFrame", background="#2D2D2D")
             self.style.configure("Tooltip.TLabel", background="#2D2D2D", foreground="#FFFFFF")
             self.style.configure("CanvasBorder.TFrame", background=border_color)
-            
-            # Enhanced radio button styling for light theme
             self.style.configure("Speed.TFrame",
                                background=radio_container_bg,
                                relief="flat",
                                borderwidth=1)
-            
             self.style.configure("Speed.TRadiobutton",
                                background=radio_bg,
                                foreground=radio_fg,
@@ -220,10 +193,8 @@ class InsertionSortVisualizer:
                           borderwidth=[('selected', 0)],
                           focusthickness=[('selected', 0)])
 
+    # UI
     def build_ui(self):
-        """
-        Build and arrange all UI elements for the visualizer, including controls, canvas, and statistics.
-        """
         # Main container with padding
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -420,10 +391,8 @@ class InsertionSortVisualizer:
         shortcuts_text = "Keyboard Shortcuts: Space (Pause/Resume) | S (Start) | R (Reset) | T (Theme) | B (Step-by-Step) | N (Next Step)"
         ttk.Label(shortcuts_frame, text=shortcuts_text, font=("Segoe UI", 8)).pack(side=tk.LEFT)
 
+    # Speed
     def set_speed(self, speed_value, speed_text):
-        """
-        Update the animation speed and adjust the speed indicator label.
-        """
         try:
             self.speed = speed_value
             self.speed_indicator.config(text=f"Speed: {speed_text}")
@@ -441,6 +410,7 @@ class InsertionSortVisualizer:
             self.animation_frames = 30
             self.animation_speed_factor = 1.0
 
+    # Random
     def generate_random(self):
         if self.sorting:
             messagebox.showwarning("Warning", "Cannot generate new array while sorting is in progress.")
@@ -477,6 +447,7 @@ class InsertionSortVisualizer:
             print(f"Error generating random array: {str(e)}")
             messagebox.showerror("Error", "Failed to generate random array")
 
+    # Bar color
     def get_bar_color(self, index, color_positions):
         if not color_positions:
             return self.colors['default']
@@ -491,6 +462,7 @@ class InsertionSortVisualizer:
             return self.colors['insert']
         return self.colors['default']
 
+    # Draw bars
     def draw_bars(self, data, color_positions=None):
         try:
             if not self.canvas.winfo_exists():
@@ -585,9 +557,10 @@ class InsertionSortVisualizer:
             # Don't show error message for drawing errors to avoid spam
             # Just log it and continue
 
+    # Input
     def submit_input(self):
         """
-        Handle the event when the user submits a new array for sorting.
+        Handle user input.
         """
         if self.sorting:
             messagebox.showwarning("Warning", "Cannot submit new array while sorting is in progress.")
@@ -613,9 +586,10 @@ class InsertionSortVisualizer:
                             if isinstance(button, ttk.Button) and button.cget('text') == "Start Sort (S)":
                                 button.config(state='normal')
 
+    # Parse
     def parse_input(self):
         """
-        Parse and validate the user's input from the entry field.
+        Check input.
         """
         raw = self.input_entry.get().strip()
         try:
@@ -653,9 +627,10 @@ class InsertionSortVisualizer:
             messagebox.showerror("Input Error", f"Error parsing input: {str(e)}")
             return False
 
+    # Stats
     def update_statistics(self):
         """
-        Refresh the statistics labels and progress bar based on the current sorting state.
+        Update stats.
         """
         self.comparisons_label.config(text=f"Comparisons: {self.comparisons}")
         self.swaps_label.config(text=f"Swaps: {self.swaps}")
@@ -666,9 +641,10 @@ class InsertionSortVisualizer:
             progress = (self.current_iteration / self.total_iterations) * 100
             self.progress_var.set(progress)
 
+    # Reset
     def reset(self):
         """
-        Reset the visualizer to its initial state, clearing the canvas and statistics.
+        Reset everything.
         """
         self.canvas.delete("all")
         if hasattr(self, 'initial_data') and self.initial_data is not None:
@@ -694,9 +670,10 @@ class InsertionSortVisualizer:
         self.is_animating = False
         self.update_statistics()
 
+    # Start
     def start_sort(self):
         """
-        Begin the insertion sort process, either in normal or step-by-step mode.
+        Start sorting.
         """
         if self.sorting:
             return
@@ -737,9 +714,10 @@ class InsertionSortVisualizer:
         else:
             self.insertion_sort(1)
 
+    # Pause
     def toggle_pause(self):
         """
-        Pause or resume the sorting animation.
+        Pause or resume.
         """
         if not self.sorting:
             return
@@ -749,9 +727,10 @@ class InsertionSortVisualizer:
             self.process_animation_queue()
             self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
+    # Step mode
     def toggle_step_by_step(self):
         """
-        Enable or disable step-by-step sorting mode.
+        Toggle step mode.
         """
         self.step_by_step = not self.step_by_step
         if self.step_by_step:
@@ -774,9 +753,10 @@ class InsertionSortVisualizer:
                 self.process_animation_queue()
                 self.root.after(self.speed, lambda: self.insertion_sort(self.current_iteration))
 
+    # Theme
     def toggle_theme(self):
         """
-        Switch between dark and light themes for the application.
+        Switch theme.
         """
         try:
             self.is_dark_theme = not self.is_dark_theme
@@ -789,9 +769,10 @@ class InsertionSortVisualizer:
             print(f"Error toggling theme: {str(e)}")
             messagebox.showerror("Error", "Failed to switch theme")
 
+    # Color mix
     def interpolate_color(self, color1, color2, factor):
         """
-        Blend two colors together by a given factor (0.0 to 1.0).
+        Mix two colors.
         """
         # Check cache first
         cache_key = (color1, color2, factor)
@@ -819,9 +800,17 @@ class InsertionSortVisualizer:
         self._cached_colors[cache_key] = result
         return result
 
+    # Easing
+    def ease_in_out_quad(self, t):
+        """
+        Smooth easing.
+        """
+        return t * t * (3 - 2 * t)
+
+    # Queue anim
     def queue_animation(self, start_data, end_data, colors, animation_type, step_description=None):
         """
-        Add an animation step to the queue for smooth transitions during sorting.
+        Add animation step.
         """
         # Ensure colors are properly copied and maintained
         colors_copy = {}
@@ -871,9 +860,10 @@ class InsertionSortVisualizer:
         if not self.is_animating:
             self.process_animation_queue()
 
+    # Process anim
     def process_animation_queue(self):
         """
-        Process the next animation in the queue, if any.
+        Run next animation.
         """
         if not self.animation_queue:
             self.is_animating = False
@@ -891,9 +881,10 @@ class InsertionSortVisualizer:
             animation['step']
         )
 
+    # Animate
     def animate_transition(self, start_data, end_data, colors, animation_type, step_description=None):
         """
-        Animate the transition between two data states.
+        Animate data.
         """
         self.animation_data = (start_data, end_data)
         self.animation_colors = colors
@@ -904,9 +895,10 @@ class InsertionSortVisualizer:
             self.current_step = step_description
         self.animate_frame()
 
+    # Frame
     def animate_frame(self):
         """
-        Draw a single frame of the current animation.
+        Draw animation frame.
         """
         if self.paused and not self.step_by_step:
             return
@@ -956,15 +948,10 @@ class InsertionSortVisualizer:
         if not self.paused or self.step_by_step:
             self.root.after(next_frame_delay, self.animate_frame)
 
-    def ease_in_out_quad(self, t):
-        """
-        Easing function for smoother animation transitions.
-        """
-        return t * t * (3 - 2 * t)
-
+    # Sort step
     def insertion_sort(self, i):
         """
-        Perform one iteration of the insertion sort algorithm.
+        Do one sort step.
         """
         if not self.sorting:
             return
@@ -1147,9 +1134,10 @@ class InsertionSortVisualizer:
         # Continue with next element
         self.root.after(self.speed, lambda: self.insertion_sort(i + 1))
 
+    # Resize
     def on_canvas_resize(self, event):
         """
-        Handle canvas resizing and redraw the bars accordingly.
+        Redraw bars.
         """
         try:
             # Update canvas dimensions
@@ -1162,9 +1150,10 @@ class InsertionSortVisualizer:
         except Exception as e:
             print(f"Error during canvas resize: {str(e)}")
 
+    # Next
     def next_step(self):
         """
-        Move to the next step in step-by-step sorting mode.
+        Next step.
         """
         if not self.sorting or not self.step_by_step:
             return
@@ -1177,9 +1166,10 @@ class InsertionSortVisualizer:
             # If no animations, advance to next step
             self.step_by_step_sort()
 
+    # Step sort
     def step_by_step_sort(self):
         """
-        Execute the insertion sort in step-by-step mode, allowing user control over each step.
+        Step-by-step sort.
         """
         # If sorting is done
         if not self.sorting or self.step_i >= len(self.data):
@@ -1347,9 +1337,10 @@ class InsertionSortVisualizer:
             self.step_mode = 'select'
             return
 
+    # Close
     def close_window(self):
         """
-        Safely close the application window and clean up resources.
+        Close the app.
         """
         try:
             # Clear any pending animations
@@ -1368,9 +1359,7 @@ class InsertionSortVisualizer:
             self.root.destroy()
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = InsertionSortVisualizer(root)
-    root.mainloop()
+    main()
 
     # --- Step-by-step mode quick test/demo ---
     # To use, uncomment the following lines and run this file.
