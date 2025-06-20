@@ -11,12 +11,14 @@ class RoundedRectangleCanvas(tk.Canvas):
     A custom Canvas widget that draws a rounded rectangle as its background.
     Useful for creating UI elements with rounded corners.
     """
-    def __init__(self, parent, corner_radius, fill_color, **kwargs):
+    def __init__(self, parent, corner_radius, fill_color, border_color=None, border_width=0, **kwargs):
         # Set the canvas background to match the fill_color for a consistent look.
         # This is crucial for ensuring the entire area of the custom canvas matches its intended color.
         super().__init__(parent, highlightthickness=0, bg=fill_color, **kwargs)
         self.corner_radius = corner_radius
         self.fill_color = fill_color # This is used for the polygon fill
+        self.border_color = border_color
+        self.border_width = border_width
         self.bind("<Configure>", self._draw_rounded_rectangle)
 
     def _draw_rounded_rectangle(self, event=None):
@@ -34,6 +36,21 @@ class RoundedRectangleCanvas(tk.Canvas):
                   0, height - self.corner_radius,
                   0, self.corner_radius]
 
+        # Draw border if requested
+        if self.border_color and self.border_width > 0:
+            self.create_polygon(points, smooth=True, fill=self.border_color, tags="border")
+            self.tag_lower("border")
+            # Shrink for inner fill
+            shrink = self.border_width
+            points = [self.corner_radius + shrink, shrink,
+                      width - self.corner_radius - shrink, shrink,
+                      width - shrink, self.corner_radius + shrink,
+                      width - shrink, height - self.corner_radius - shrink,
+                      width - self.corner_radius - shrink, height - shrink,
+                      self.corner_radius + shrink, height - shrink,
+                      shrink, height - self.corner_radius - shrink,
+                      shrink, self.corner_radius + shrink]
+
         self.create_polygon(points, smooth=True, fill=self.fill_color, tags="rect")
         self.tag_lower("rect") # Ensure other widgets placed on canvas are on top
 
@@ -42,98 +59,75 @@ class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Sorting Visualizer")
+        self.root.state('zoomed')
+        self.root.attributes('-fullscreen', True)
+        self.root.minsize(800, 500)
+        self.root.config(bg="#232334")
 
-        # --- Calculate dimensions and position to center the window ---
-        window_width = 1000
-        window_height = 600
+        # --- Header Bar ---
+        self.header_bar = tk.Frame(self.root, bg="#18181b")
+        self.header_bar.pack(side="top", fill="x")
 
-        # Get screen width and height
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
+        header_inner = tk.Frame(self.header_bar, bg="#18181b")
+        header_inner.pack(side="left", padx=32, pady=(0, 8), anchor="center")
 
-        # Calculate x and y coordinates for the top-left corner to center the window
-        center_x = int(screen_width / 2 - window_width / 2)
-        center_y = int(screen_height / 2 - window_height / 2)
-
-        # Set the window geometry: "widthxheight+x+y"
-        self.root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
-        # --- End of centering calculation ---
-
-        self.root.minsize(800, 500) # Minimum size
-        self.root.config(bg="#1A1A2E") # Dark blue background
-
-        # Configure root grid for responsive layout
-        self.root.grid_rowconfigure(0, weight=0) # Header row, fixed height
-        self.root.grid_rowconfigure(1, weight=1) # Main content row, expands
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_columnconfigure(1, weight=1)
-
-        # --- Header Section (Logo and Text) ---
-        self.header_frame = tk.Frame(self.root, bg=self.root['bg'])
-        self.header_frame.grid(row=0, column=0, columnspan=2, sticky="nw", padx=30, pady=20)
-        self.header_frame.grid_columnconfigure(0, weight=0) # Column for logo (fixed)
-        self.header_frame.grid_columnconfigure(1, weight=1) # Column for text (expands)
-
-        # Load the image using PIL and convert it to PhotoImage
+        # Logo
         try:
-             image_path = 'C:/Users/PC5/Documents/Project/Img/Cavite_State_University_(CvSU).png'
-             pil_image = Image.open(image_path)
-             pil_image = pil_image.resize((60, 60), Image.Resampling.LANCZOS) # Smaller size for logo
-             self.logo_image = ImageTk.PhotoImage(pil_image)
-            
-             self.logo_label = tk.Label(self.header_frame, image=self.logo_image, bg=self.root['bg'])
-             self.logo_label.grid(row=0, column=0, rowspan=3, sticky="w", padx=(0, 10)) # Span 3 rows for vertical alignment
-        except FileNotFoundError:
-             print(f"Error: Image file not found at {image_path}")
-             self.logo_label = tk.Label(self.header_frame, text="Logo Missing", bg=self.root['bg'], fg="red", font=("Arial", 10))
-             self.logo_label.grid(row=0, column=0, rowspan=3, sticky="w", padx=(0, 10))
+            image_path = os.path.join(os.path.dirname(__file__), 'Cavite_State_University_(CvSU).png')
+            pil_image = Image.open(image_path)
+            pil_image = pil_image.resize((54, 54), Image.Resampling.LANCZOS)
+            self.logo_image = ImageTk.PhotoImage(pil_image)
+            self.logo_label = tk.Label(header_inner, image=self.logo_image, bg="#18181b")
+            self.logo_label.pack(side="left", pady=0)
+        except Exception:
+            self.logo_label = tk.Label(header_inner, text="Logo", bg="#18181b", fg="white")
+            self.logo_label.pack(side="left", pady=0)
 
-        # Text next to the logo - now split into multiple labels for different fonts
-        self.cvsu_label = tk.Label(
-            self.header_frame,
-            text="CAVITE STATE UNIVERSITY",
-            font=("Arial", 12, "bold"), # h4 equivalent
-            fg="white",
-            bg=self.root['bg']
-        )
-        self.cvsu_label.grid(row=0, column=1, sticky="w")
+        # Text block
+        header_text_frame = tk.Frame(header_inner, bg="#18181b")
+        header_text_frame.pack(side="left", padx=(18, 0), anchor="center", pady=(0, 8))
+        tk.Label(header_text_frame, text="CAVITE STATE UNIVERSITY", font=("Arial", 13, "bold"), fg="white", bg="#18181b").pack(anchor="w")
+        tk.Label(header_text_frame, text="SILANG CAMPUS", font=("Arial", 18, "bold"), fg="#7ee787", bg="#18181b").pack(anchor="w")
+        tk.Label(header_text_frame, text="TRUTH | EXCELLENCE | SERVICE", font=("Arial", 13, "bold"), fg="white", bg="#18181b").pack(anchor="w")
 
-        self.silang_label = tk.Label(
-            self.header_frame,
-            text="SILANG CAMPUS",
-            font=("Arial", 18, "bold"), # h2 equivalent (larger)
-            fg="white",
-            bg=self.root['bg']
-        )
-        self.silang_label.grid(row=1, column=1, sticky="w") # Placed below CvSU label
+        # --- Main Content Center Frame ---
+        self.center_frame = tk.Frame(self.root, bg="#232334")
+        self.center_frame.pack(expand=True)
 
-        self.motto_label = tk.Label(
-            self.header_frame,
-            text="TRUTH | EXCELLENCE | SERVICE",
-            font=("Arial", 12, "bold"), # h4 equivalent
-            fg="white",
-            bg=self.root['bg']
-        )
-        self.motto_label.grid(row=2, column=1, sticky="w") # Placed below Silang Campus label
-
+        panel_width = 560
+        panel_height = 420
+        gap = 56
+        panel_color = "#444b5a"
+        border_color = "#232334"
 
         # --- Left Panel ---
-        self.left_panel_container = RoundedRectangleCanvas(
-            self.root, corner_radius=30, fill_color="#2d8bba", # Lighter blue for the left panel
-            width=450 # Initial width, will expand with weight
+        self.left_panel = tk.Frame(
+            self.center_frame, width=panel_width, height=panel_height,
+            bg=panel_color, highlightbackground=border_color, highlightthickness=2, bd=0
         )
-        # Changed padx from 20 to 10
-        self.left_panel_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=20)
-        
-        # Configure left panel's internal grid to center content
-        self.left_panel_container.grid_rowconfigure(0, weight=1) # Row for description
-        self.left_panel_container.grid_columnconfigure(0, weight=1)
+        self.left_panel.pack(side="left", padx=(0, gap), pady=0)
+        self.left_panel.pack_propagate(False)
+        self.left_panel.config(relief="ridge")
+        self.left_panel.after(10, lambda: self.left_panel.config(highlightbackground=border_color))
+        self.left_panel.update()
+        self.left_panel_canvas = tk.Canvas(self.left_panel, width=panel_width, height=panel_height, bg=panel_color, highlightthickness=0, bd=0)
+        self.left_panel_canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        self.left_panel_canvas.create_rectangle(8, 8, panel_width-8, panel_height-8, outline=border_color, width=2, fill=panel_color)
+        self.left_panel_canvas.create_rectangle(8, 8, panel_width-8, panel_height-8, outline='', width=0, fill='', tags='shadow')
+        self.left_panel_canvas.lower('all')
 
-        # Description text inside the left panel, centered and about Insertion Sort
-        self.description_label = tk.Label(
-            self.left_panel_container,
+        left_content = tk.Frame(self.left_panel, bg=panel_color)
+        left_content.place(relx=0.5, rely=0.5, anchor="center")
+        left_title = tk.Label(
+            left_content,
+            text="Welcome to the Insertion Sort Visualizer!",
+            font=("Arial", 14, "bold"),
+            fg="white", bg=panel_color, pady=4
+        )
+        left_title.pack(pady=(0, 8))
+        left_desc = tk.Label(
+            left_content,
             text=(
-                "Welcome to the Insertion Sort Visualizer!\n\n"
                 "Insertion Sort builds the final sorted array (or list) one item at a time.\n"
                 "It iterates through the input elements and removes one element per iteration,\n"
                 "finds the place within the sorted array, and inserts it there.\n\n"
@@ -143,118 +137,94 @@ class App:
                 "- The step-by-step process of placing an element in its correct position.\n\n"
                 "Insertion Sort is efficient for small data sets or data sets that are already substantially sorted."
             ),
-            font=("Arial", 12),
-            fg="white",
-            bg="#2d8bba", # Match panel fill color
-            justify="center",
-            wraplength=350 # Wrap text to fit within the panel
+            font=("Arial", 10), fg="white", bg=panel_color, justify="center", wraplength=410
         )
-        self.description_label.grid(row=0, column=0, sticky="nsew", padx=30, pady=30)
-        
+        left_desc.pack(pady=(0, 0), padx=8)
 
-        # --- Right Panel (Frame container for the RoundedRectangleCanvas) ---
-        # This frame ensures a consistent background color for the margins of its children
-        self.right_panel_frame = tk.Frame(self.root, bg="#2d8bba") # Explicitly set background for the frame
-        self.right_panel_frame.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
-        self.right_panel_frame.grid_rowconfigure(0, weight=1)
-        self.right_panel_frame.grid_columnconfigure(0, weight=1)
-
-        # The actual RoundedRectangleCanvas for the right panel is now a child of the frame
-        self.right_panel_container = RoundedRectangleCanvas(
-            self.right_panel_frame, corner_radius=30, fill_color="#2d8bba"
+        # --- Right Panel ---
+        self.right_panel = tk.Frame(
+            self.center_frame, width=panel_width, height=panel_height,
+            bg=panel_color, highlightbackground=border_color, highlightthickness=2, bd=0
         )
-        # Use pack to make the RoundedRectangleCanvas fill its parent frame
-        self.right_panel_container.pack(fill="both", expand=True)
+        self.right_panel.pack(side="left", padx=(0, 0), pady=0)
+        self.right_panel.pack_propagate(False)
+        self.right_panel.config(relief="ridge")
+        self.right_panel.after(10, lambda: self.right_panel.config(highlightbackground=border_color))
+        self.right_panel.update()
+        self.right_panel_canvas = tk.Canvas(self.right_panel, width=panel_width, height=panel_height, bg=panel_color, highlightthickness=0, bd=0)
+        self.right_panel_canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        self.right_panel_canvas.create_rectangle(8, 8, panel_width-8, panel_height-8, outline=border_color, width=2, fill=panel_color)
+        self.right_panel_canvas.create_rectangle(8, 8, panel_width-8, panel_height-8, outline='', width=0, fill='', tags='shadow')
+        self.right_panel_canvas.lower('all')
 
-        # Configure right panel's internal grid for the new design (inside self.right_panel_container)
-        self.right_panel_container.grid_rowconfigure(0, weight=0) # For "Insert sort" label and circle
-        self.right_panel_container.grid_rowconfigure(1, weight=0) # For first horizontal rectangle
-        self.right_panel_container.grid_rowconfigure(2, weight=0) # For second horizontal rectangle
-        self.right_panel_container.grid_rowconfigure(3, weight=1) # For the large bottom container (expands)
-        self.right_panel_container.grid_columnconfigure(0, weight=1) # Single column for most elements
+        # Exit button (top right, circular, shadow)
+        self.exit_btn = tk.Canvas(self.right_panel, width=36, height=36, bg=panel_color, highlightthickness=0)
+        self.exit_btn.place(relx=1.0, y=18, anchor="ne")
+        self.exit_oval = self.exit_btn.create_oval(2, 2, 34, 34, fill="#fff", outline="#fff", width=2)
+        self.exit_btn.create_oval(4, 4, 32, 32, fill='', outline="#232334", width=1)  # subtle shadow
+        self.exit_text = self.exit_btn.create_text(18, 18, text="✕", fill="#D9534F", font=("Arial", 15, "bold"))
+        self.exit_btn.bind("<Button-1>", lambda e: self.root.destroy())
+        self.exit_btn.bind("<Enter>", lambda e: self.exit_btn.itemconfig(self.exit_oval, outline="#C9302C"))
+        self.exit_btn.bind("<Leave>", lambda e: self.exit_btn.itemconfig(self.exit_oval, outline="#fff"))
 
-        # "Insert sort" label at top-left with yellow background
-        self.insert_sort_label = tk.Label(
-            self.right_panel_container,
-            text="Insert sort",
-            font=("Arial", 12, "bold"),
-            bg="#FFFACD", # Lemon Chiffon (light yellow)
-            fg="#1A1A2E", # Dark blue for text
-            relief="flat",
-            padx=10,
-            pady=5
+        # Right panel content
+        right_content = tk.Frame(self.right_panel, bg=panel_color)
+        right_content.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        subtitle = tk.Label(
+            right_content,
+            text="DCIT 25 - Data Structure and Algorithms",
+            font=("Arial", 10, "italic"), fg="#bfc7d5", bg=panel_color
         )
-        self.insert_sort_label.grid(row=0, column=0, sticky="nw", padx=30, pady=30)
-
-        # Circular element at top-right
-        self.circle_canvas = tk.Canvas(
-            self.right_panel_container,
-            width=50, height=50,
-            bg=self.right_panel_container.fill_color, # Match panel background
-            highlightthickness=0
+        subtitle.pack(anchor="w", padx=30, pady=(24, 0))
+        right_title = tk.Label(
+            right_content,
+            text="INSERTION SORT VISUALIZER",
+            font=("Arial", 14, "bold"), fg="white", bg=panel_color
         )
-        self.circle_canvas.create_oval(5, 5, 45, 45, fill="white", outline="white", width=2)
-        self.circle_canvas.grid(row=0, column=0, sticky="ne", padx=30, pady=30)
-
-        # First horizontal rounded rectangle
-        self.rect1 = RoundedRectangleCanvas(
-            self.right_panel_container, corner_radius=15, fill_color="white",
-            height=40
+        right_title.pack(anchor="w", padx=30, pady=(6, 8))
+        dev_label = tk.Label(
+            right_content,
+            text="Developers:", font=("Arial", 10, "bold"), fg="#bfc7d5", bg=panel_color
         )
-        self.rect1.grid(row=1, column=0, sticky="ew", padx=30, pady=(0, 10))
+        dev_label.pack(anchor="w", padx=30)
+        devs = [
+            "• Jason, Ivan",
+            "• Llamson, Joshua",
+            "• Marco, Jade",
+            "• Pate, Mark",
+            "• Santos, Dave Ulrich",
+            "• Todeña, Cedrick"
+        ]
+        for dev in devs:
+            tk.Label(right_content, text=dev, font=("Arial", 10), fg="#e0e6f0", bg=panel_color).pack(anchor="w", padx=48, pady=0)
 
-        # Second horizontal rounded rectangle
-        self.rect2 = RoundedRectangleCanvas(
-            self.right_panel_container, corner_radius=15, fill_color="white",
-            height=40
-        )
-        self.rect2.grid(row=2, column=0, sticky="ew", padx=30, pady=(0, 20))
-        
+        # Add vertical space before the button
+        tk.Label(right_content, bg=panel_color).pack(pady=8)
 
-        # Large bottom rounded rectangle (outer white)
-        self.bottom_outer_rect = RoundedRectangleCanvas(
-            self.right_panel_container, corner_radius=30, fill_color="white",
-            # No fixed height, let it expand with weight=1
-        )
-        self.bottom_outer_rect.grid(row=3, column=0, sticky="nsew", padx=30, pady=(0, 30))
-
-        # Inner light blue rounded rectangle inside the white one
-        self.bottom_inner_rect = RoundedRectangleCanvas(
-            self.bottom_outer_rect, corner_radius=25, fill_color="#4DC1D8", # A lighter blue
-            # Use place to position it relative to its parent (bottom_outer_rect)
-        )
-        self.bottom_inner_rect.place(relx=0.05, rely=0.05, relwidth=0.9, relheight=0.9)
-
-
-        # "Go sort" button moved inside the new inner light blue rectangle
         self.go_sort_button = tk.Button(
-            self.bottom_inner_rect,
+            right_content,
             text="Go sort",
-            font=("Arial", 18, "bold"),
+            font=("Arial", 20, "bold"),
             fg="white",
-            bg="#00BFFF", # Keep DeepSkyBlue for the button itself
+            bg="#232334",
+            activebackground="#33CCFF",
             relief="flat",
             command=self.on_go_sort_click
         )
-        # Center the button within its new parent (bottom_inner_rect)
-        self.go_sort_button.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.8, relheight=0.6)
+        self.go_sort_button.pack(pady=(0, 0), ipadx=60, ipady=12, anchor="center")
+        self.go_sort_button.bind("<Enter>", lambda e: self.go_sort_button.config(bg="#33CCFF"))
+        self.go_sort_button.bind("<Leave>", lambda e: self.go_sort_button.config(bg="#232334"))
 
-    #button redirection
     def on_go_sort_click(self):
         print("Redirecting to loading screen...")
         try:
-            # Get the directory of the current script
             current_dir = os.path.dirname(os.path.abspath(__file__))
             loading_screen_path = os.path.join(current_dir, "loading_screen.py")
-            
-            # Launch the loading screen using the same Python interpreter
             subprocess.Popen([sys.executable, loading_screen_path])
-            
-            # Close the current window
             self.root.destroy()
         except Exception as e:
             print(f"Error launching loading screen: {e}")
-            # Fallback: show an error message
             tk.messagebox.showerror("Error", f"Could not launch loading screen: {e}")
 
 if __name__ == "__main__":

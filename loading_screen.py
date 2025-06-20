@@ -69,32 +69,6 @@ class LoadingScreen(tk.Frame):
             bg="#000000"
         )
         self.progress_label.pack(pady=(15, 0))
-        
-        # Restart button
-        self.restart_button = tk.Button(
-            self.center_frame,
-            text="Restart Loading",
-            font=("Segoe UI", 12, "bold"),
-            bg="#FFFFFF",
-            fg="#000000",
-            activebackground="#333333",
-            activeforeground="#FFFFFF",
-            command=self.restart_loading
-        )
-        self.restart_button.pack(pady=(30, 0))
-
-        # Add close button
-        self.close_button = tk.Button(
-            self.center_frame,
-            text="Close Window",
-            font=("Segoe UI", 12, "bold"),
-            bg="#FFFFFF",
-            fg="#000000",
-            activebackground="#333333",
-            activeforeground="#FFFFFF",
-            command=self.close_window
-        )
-        self.close_button.pack(pady=(10, 0))
     
     def _initialize_animation_variables(self):
         """Initialize variables for animations."""
@@ -196,35 +170,6 @@ class LoadingScreen(tk.Frame):
         """Start the main application."""
         self.destroy()
         app = InsertionSortVisualizer(self.root)
-    
-    def restart_loading(self):
-        """Restart the loading animation."""
-        # Cancel any ongoing animations
-        if self.animation_id:
-            self.root.after_cancel(self.animation_id)
-        
-        # Reset progress
-        self.progress = 0
-        self.current_text_index = 0
-        
-        # Reset progress bar
-        self.progress_canvas.delete("all")
-        self.progress_canvas.configure(bg="#000000")
-        
-        # Reset labels
-        self.loading_label.config(text="Loading, please wait...", foreground="#FFFFFF")
-        self.progress_label.config(text="0%", foreground="#FFFFFF")
-        
-        # Restart animations
-        self._start_animations()
-
-    def close_window(self):
-        """Close the loading screen window."""
-        if messagebox.askokcancel("Quit", "Do you want to quit the application?"):
-            # Cancel any ongoing animations
-            if hasattr(self, 'animation_id') and self.animation_id:
-                self.root.after_cancel(self.animation_id)
-            self.root.destroy()
 
 def main():
     root = tk.Tk()

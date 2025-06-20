@@ -460,10 +460,6 @@ class InsertionSortVisualizer:
         step_nav_frame = ttk.Frame(left_buttons)
         step_nav_frame.pack(side=tk.LEFT, padx=20)
         
-        self.prev_step_button = ttk.Button(step_nav_frame, text="Previous Step", command=self.previous_step, state='disabled')
-        self.prev_step_button.pack(side=tk.LEFT, padx=5)
-        self.add_tooltip(self.prev_step_button, "Go to previous step")
-        
         self.next_step_button = ttk.Button(step_nav_frame, text="Next Step (N)", command=self.next_step)
         self.next_step_button.pack(side=tk.LEFT, padx=5)
         self.add_tooltip(self.next_step_button, "Proceed to next step (Shortcut: N)")
@@ -749,7 +745,6 @@ class InsertionSortVisualizer:
         self.status_label.config(text="")
         self.pause_button.config(text="Pause", state='disabled')
         self.next_step_button.config(state='disabled')
-        self.prev_step_button.config(state='disabled')
         self.comparisons = 0
         self.swaps = 0
         self.current_iteration = 0
@@ -913,7 +908,6 @@ class InsertionSortVisualizer:
                 'swaps': self.swaps,
                 'description': step_description
             })
-            self.prev_step_button.config(state='normal')
         
         self.animation_queue.append(animation)
         self.step_count += 1
@@ -1020,7 +1014,6 @@ class InsertionSortVisualizer:
             self.sorting = False
             self.pause_button.config(state='disabled')
             self.next_step_button.config(state='disabled')
-            self.prev_step_button.config(state='normal')
             return
 
         if self.paused and not self.step_by_step:
@@ -1212,74 +1205,6 @@ class InsertionSortVisualizer:
             # If no animations, advance to next step
             self.step_by_step_sort()
 
-    def previous_step(self):
-        """Go back to the previous step in the sorting process."""
-        if not self.sorting or not self.step_by_step or not self.step_history:
-            return
-        
-        # Clear any pending animations
-        self.animation_queue.clear()
-        self.is_animating = False
-        
-        # Get the previous step from history
-        prev_step = self.step_history.pop()
-        
-        # Restore the previous state
-        self.data = prev_step['data'].copy()
-        self.step_i = prev_step['step_i']
-        self.step_j = prev_step['step_j']
-        self.step_current = prev_step['step_current']
-        self.step_mode = prev_step['step_mode']
-        self.comparisons = prev_step['comparisons']
-        self.swaps = prev_step['swaps']
-        
-        # Restore step counters
-        if 'step_number' in prev_step:
-            self.current_step_number = prev_step['step_number']
-        if 'substep' in prev_step:
-            self.current_substep = prev_step['substep']
-        
-        # Update the display based on the step mode
-        if self.step_mode == 'select':
-            self.draw_bars(self.data, {"current": [self.step_i], "sorted": list(range(self.step_i))})
-        elif self.step_mode == 'compare':
-            self.draw_bars(self.data, {"current": [self.step_i], "compare": [self.step_j], "sorted": list(range(self.step_i))})
-        elif self.step_mode == 'shift':
-            self.draw_bars(self.data, {"current": [self.step_i], "compare": [self.step_j], "sorted": list(range(self.step_i))})
-        elif self.step_mode == 'shift_move':
-            self.draw_bars(self.data, {"current": [self.step_i], "compare": [self.step_j], "sorted": list(range(self.step_i))})
-        elif self.step_mode == 'insert_point':
-            self.draw_bars(self.data, {"current": [self.step_i], "insert": [self.step_j + 1], "sorted": list(range(self.step_i))})
-        elif self.step_mode == 'insert':
-            self.draw_bars(self.data, {"current": [self.step_i], "insert": [self.step_j + 1], "sorted": list(range(self.step_i))})
-        elif self.step_mode == 'complete':
-            self.draw_bars(self.data, {"sorted": list(range(self.step_i + 1))})
-        
-        self.status_label.config(text=prev_step['description'])
-        self.update_statistics()
-        
-        # Enable/disable navigation buttons
-        self.prev_step_button.config(state='normal' if self.step_history else 'disabled')
-        self.next_step_button.config(state='normal')
-
-    def close_window(self):
-        """Close the application window."""
-        try:
-            # Clear any pending animations
-            if hasattr(self, 'animation_timer') and self.animation_timer:
-                self.root.after_cancel(self.animation_timer)
-                self.animation_timer = None
-            
-            # Clear animation queue
-            self.animation_queue.clear()
-            self.is_animating = False
-            
-            if messagebox.askokcancel("Quit", "Do you want to quit the application?"):
-                self.root.destroy()
-        except Exception as e:
-            print(f"Error during window close: {str(e)}")
-            self.root.destroy()
-
     def step_by_step_sort(self):
         """Step-by-step sorting with animations."""
         # If sorting is done
@@ -1295,7 +1220,6 @@ class InsertionSortVisualizer:
             self.sorting = False
             self.pause_button.config(state='disabled')
             self.next_step_button.config(state='disabled')
-            self.prev_step_button.config(state='normal')
             return
 
         # Step 1: Select current element
@@ -1448,6 +1372,24 @@ class InsertionSortVisualizer:
             self.step_i += 1
             self.step_mode = 'select'
             return
+
+    def close_window(self):
+        """Close the application window."""
+        try:
+            # Clear any pending animations
+            if hasattr(self, 'animation_timer') and self.animation_timer:
+                self.root.after_cancel(self.animation_timer)
+                self.animation_timer = None
+            
+            # Clear animation queue
+            self.animation_queue.clear()
+            self.is_animating = False
+            
+            if messagebox.askokcancel("Quit", "Do you want to quit the application?"):
+                self.root.destroy()
+        except Exception as e:
+            print(f"Error during window close: {str(e)}")
+            self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()
